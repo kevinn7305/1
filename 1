@@ -107,3 +107,55 @@ set.seed(123)
 kc<-kmeans(nor,4)
 kc
 plot(Sales~D.Demand,mydata,col=kc$cluster)
+
+
+# ============================================================
+#  SEM Teaching Unit — Complete R Script
+#  Package: lavaan | Dataset: Worland (N=500)
+# ============================================================
+
+if (!require(lavaan)) install.packages('lavaan')
+if (!require(semPlot)) install.packages('semPlot')
+library(lavaan)
+
+# Load data
+dat <- read.csv("https://stats.idre.ucla.edu/wp-content/uploads/2021/02/worland5.csv")
+cov(dat)   # sample covariance matrix
+
+# --- MODEL 1: Simple Regression ---
+m1b <- 'read ~ 1 + motiv'
+fit1b <- sem(m1b, data=dat); summary(fit1b)
+
+# --- MODEL 2: Multiple Regression ---
+m2 <- 'read ~ 1 + ppsych + motiv'
+fit2 <- sem(m2, data=dat); summary(fit2)
+
+# --- MODEL 3: Multivariate Regression ---
+m3a <- '
+  read  ~ ppsych + motiv
+  arith ~ motiv'
+fit3a <- sem(m3a, data=dat); summary(fit3a)
+
+# --- MODEL 4: Path Analysis ---
+m4a <- '
+  read  ~ ppsych + motiv
+  arith ~ motiv + read'
+fit4a <- sem(m4a, data=dat)
+summary(fit4a, fit.measures=TRUE)
+modindices(fit4a, sort=TRUE)
+
+# --- MODEL 5: CFA Measurement Model ---
+m5a <- 'risk =~ verbal + ses + ppsych'
+fit5a <- sem(m5a, data=dat)
+summary(fit5a, standardized=TRUE)
+
+# --- MODEL 6: Full Structural Regression ---
+m6b <- '
+  adjust  =~ motiv + harm + stabi
+  risk    =~ verbal + ses + ppsych
+  achieve =~ read + arith + spell
+  adjust  ~ risk
+  achieve ~ adjust + risk'
+fit6b <- sem(m6b, data=dat)
+summary(fit6b, standardized=TRUE, fit.measures=TRUE)
+
