@@ -1,0 +1,779 @@
+# MACHINE LEARNING LAB — COMBINED CODES
+
+## 1. Multiple Linear Regression — CO₂ Emissions
+
+```python
+import pandas as pd
+import matplotlib.pyplot as plt
+import numpy as np
+
+df = pd.read_csv("FuelConsumptionCo2.csv")
+df.head()
+df.sample(5)
+df.describe()
+
+df = df.drop(["MODELYEAR","MAKE","MODEL","VEHICLECLASS",
+              "TRANSMISSION","FUELTYPE"], axis=1)
+
+print(df)
+df.describe()
+df.corr()
+
+df = df.drop(["CYLINDERS","FUELCONSUMPTION_CITY",
+              "FUELCONSUMPTION_HWY","FUELCONSUMPTION_COMB"], axis=1)
+
+df.head(9)
+
+axes = pd.plotting.scatter_matrix(df, alpha=0.2)
+
+for ax in axes.flatten():
+    ax.xaxis.label.set_rotation(90)
+    ax.yaxis.label.set_rotation(0)
+    ax.yaxis.label.set_ha('right')
+
+plt.tight_layout()
+plt.gcf().subplots_adjust(wspace=0, hspace=0)
+plt.show()
+
+X = df.iloc[:, [0,1]].to_numpy()
+y = df.iloc[:, [2]].to_numpy()
+
+from sklearn import preprocessing
+
+std_scaler = preprocessing.StandardScaler()
+X_std = std_scaler.fit_transform(X)
+
+pd.DataFrame(X_std).describe().round(2)
+
+from sklearn.model_selection import train_test_split
+
+X_train, X_test, y_train, y_test = train_test_split(
+    X_std, y, test_size=0.2, random_state=42
+)
+
+from sklearn import linear_model
+
+regressor = linear_model.LinearRegression()
+regressor.fit(X_train, y_train)
+
+coef_ = regressor.coef_
+intercept_ = regressor.intercept_
+
+print("Coefficients: ", coef_)
+print("Intercepts: ", intercept_)
+
+means_ = std_scaler.mean_
+std_devs_ = np.sqrt(std_scaler.var_)
+
+coef_original = coef_ / std_devs_
+intercept_orginal = intercept_ - np.sum(
+    means_ * coef_ / std_devs_
+)
+
+print("Coefficients: ", coef_original)
+print("Intercepts: ", intercept_orginal)
+```
+
+---
+
+# 2. Logistic Regression — Churn
+
+```python
+import pandas as pd
+import numpy as np
+
+from sklearn.model_selection import train_test_split
+from sklearn.linear_model import LogisticRegression
+from sklearn.preprocessing import StandardScaler
+from sklearn.metrics import log_loss
+
+import matplotlib.pyplot as plt
+%matplotlib inline
+
+import warnings
+warnings.filterwarnings('ignore')
+
+churn_df = pd.read_excel("ChurnData.xlsx")
+
+churn_df = churn_df[
+    ["tenure","age","address","income","ed",
+     "employ","equip","churn"]
+]
+
+churn_df["churn"] = churn_df["churn"].astype(int)
+
+X = np.asarray(
+    churn_df[
+        ["tenure","age","address","income",
+         "ed","employ","equip"]
+    ]
+)
+
+y = np.asarray(churn_df["churn"])
+
+X_norm = StandardScaler().fit_transform(X)
+
+X_train, X_test, y_train, y_test = train_test_split(
+    X_norm, y, test_size=0.2, random_state=4
+)
+
+LR = LogisticRegression()
+LR.fit(X_train, y_train)
+
+yhat = LR.predict(X_test)
+yhat_prob = LR.predict_proba(X_test)
+
+coefficients = pd.Series(
+    LR.coef_[0],
+    index=churn_df.columns[:-1]
+)
+
+coefficients.sort_values().plot(kind='barh')
+
+plt.title("Feature Coefficients in Logistic Regression Churn Model")
+plt.xlabel("Coefficient Value")
+plt.show()
+
+print("Log Loss =", log_loss(y_test, yhat_prob))
+```
+
+### Adding `callcard`
+
+```python
+churn_df = pd.read_excel("ChurnData.xlsx")
+churn_df["churn"] = churn_df["churn"].astype(int)
+
+X = churn_df[
+    ["tenure","age","address","income",
+     "ed","employ","equip","callcard"]
+]
+
+y = churn_df["churn"]
+
+X_norm = StandardScaler().fit_transform(X)
+
+X_train, X_test, y_train, y_test = train_test_split(
+    X_norm, y, test_size=0.2, random_state=4
+)
+
+LR = LogisticRegression()
+LR.fit(X_train, y_train)
+
+yhat_prob = LR.predict_proba(X_test)
+
+loss = log_loss(y_test, yhat_prob)
+
+print("Log Loss =", loss)
+```
+
+### Adding `wireless`
+
+```python
+churn_df = pd.read_excel("ChurnData.xlsx")
+
+churn_df = churn_df[
+    ["tenure","age","address","income",
+     "ed","employ","equip","wireless","churn"]
+]
+
+churn_df["churn"] = churn_df["churn"].astype(int)
+
+X = np.asarray(
+    churn_df[
+        ["tenure","age","address","income",
+         "ed","employ","equip","wireless"]
+    ]
+)
+
+y = np.asarray(churn_df["churn"])
+
+X_norm = StandardScaler().fit_transform(X)
+
+X_train, X_test, y_train, y_test = train_test_split(
+    X_norm, y, test_size=0.2, random_state=4
+)
+
+LR = LogisticRegression()
+LR.fit(X_train, y_train)
+
+yhat_prob = LR.predict_proba(X_test)
+
+loss = log_loss(y_test, yhat_prob)
+
+print("Log Loss with wireless feature:", loss)
+```
+
+---
+
+# 3. Multiclass Logistic Regression — Obesity
+
+```python
+import pandas as pd
+import numpy as np
+import matplotlib.pyplot as plt
+import seaborn as sns
+
+from sklearn.model_selection import train_test_split
+from sklearn.preprocessing import OneHotEncoder, StandardScaler
+from sklearn.linear_model import LogisticRegression
+from sklearn.multiclass import OneVsOneClassifier
+from sklearn.metrics import accuracy_score
+
+import warnings
+warnings.filterwarnings('ignore')
+
+data = pd.read_csv("Obesity_level_prediction_dataset.csv")
+
+data.head()
+
+sns.countplot(y='NObeyesdad', data=data)
+plt.title('Distribution of Obesity Levels')
+plt.show()
+
+print(data.isnull().sum())
+print(data.info())
+print(data.describe())
+
+continuous_columns = data.select_dtypes(
+    include=['float64']
+).columns.tolist()
+
+scaler = StandardScaler()
+
+scaled_features = scaler.fit_transform(
+    data[continuous_columns]
+)
+
+scaled_df = pd.DataFrame(
+    scaled_features,
+    columns=scaler.get_feature_names_out(
+        continuous_columns
+    )
+)
+
+scaled_data = pd.concat(
+    [data.drop(columns=continuous_columns),
+     scaled_df],
+    axis=1
+)
+
+categorical_columns = scaled_data.select_dtypes(
+    include=['object']
+).columns.tolist()
+
+categorical_columns.remove('NObeyesdad')
+
+encoder = OneHotEncoder(
+    sparse_output=False,
+    drop='first'
+)
+
+encoded_features = encoder.fit_transform(
+    scaled_data[categorical_columns]
+)
+
+encoded_df = pd.DataFrame(
+    encoded_features,
+    columns=encoder.get_feature_names_out(
+        categorical_columns
+    )
+)
+
+prepped_data = pd.concat(
+    [scaled_data.drop(columns=categorical_columns),
+     encoded_df],
+    axis=1
+)
+
+prepped_data['NObeyesdad'] = (
+    prepped_data['NObeyesdad']
+    .astype('category')
+    .cat.codes
+)
+
+prepped_data.head()
+
+X = prepped_data.drop('NObeyesdad', axis=1)
+y = prepped_data['NObeyesdad']
+
+X_train, X_test, y_train, y_test = train_test_split(
+    X, y,
+    test_size=0.2,
+    random_state=42,
+    stratify=y
+)
+
+# One-vs-All
+model_ova = LogisticRegression(
+    multi_class='ovr',
+    max_iter=1000
+)
+
+model_ova.fit(X_train, y_train)
+
+y_pred_ova = model_ova.predict(X_test)
+
+print("One-vs-All (OvA) Strategy")
+print(
+    f"Accuracy: {np.round(100 * accuracy_score(
+        y_test, y_pred_ova), 2)}%"
+)
+
+# One-vs-One
+model_ovo = OneVsOneClassifier(
+    LogisticRegression(max_iter=1000)
+)
+
+model_ovo.fit(X_train, y_train)
+
+y_pred_ovo = model_ovo.predict(X_test)
+
+print("One-vs-One (OvO) Strategy")
+print(
+    f"Accuracy: {np.round(100 * accuracy_score(
+        y_test, y_pred_ovo), 2)}%"
+)
+```
+
+---
+
+# 4. Decision Tree — Drug Classification
+
+```python
+import pandas as pd
+import numpy as np
+import matplotlib.pyplot as plt
+import seaborn as sns
+
+from sklearn.model_selection import train_test_split
+from sklearn.preprocessing import OneHotEncoder, StandardScaler, LabelEncoder
+from sklearn.linear_model import LogisticRegression
+from sklearn.multiclass import OneVsOneClassifier
+from sklearn.tree import DecisionTreeClassifier, plot_tree
+from sklearn import metrics
+
+%matplotlib inline
+
+import warnings
+warnings.filterwarnings('ignore')
+
+my_data = pd.read_csv("drug200.csv")
+
+my_data.head()
+my_data.info()
+
+label_encoder = LabelEncoder()
+
+my_data['Sex'] = label_encoder.fit_transform(my_data['Sex'])
+my_data['BP'] = label_encoder.fit_transform(my_data['BP'])
+my_data['Cholesterol'] = label_encoder.fit_transform(
+    my_data['Cholesterol']
+)
+
+my_data
+
+my_data.isnull().sum()
+
+custom_map = {
+    'drugA': 0,
+    'drugB:': 1,
+    'drugC': 2,
+    'drugX': 3,
+    'drugY': 4
+}
+
+my_data['Drug_num'] = my_data['Drug'].map(custom_map)
+
+my_data
+
+my_data.drop(
+    ['Drug'],
+    axis=1
+).corr()['Drug_num']
+
+category_counts = my_data['Drug'].value_counts()
+
+plt.bar(
+    category_counts.index,
+    category_counts.values
+)
+
+plt.xlabel('Drug')
+plt.ylabel('Count')
+plt.title('Category Distrbution')
+plt.xticks(rotation=45)
+plt.show()
+
+my_data['Drug'].value_counts()
+
+y = my_data['Drug']
+
+X = my_data.drop(
+    ['Drug','Drug_num'],
+    axis=1
+)
+
+X_trainset, X_testset, y_trainset, y_testset = train_test_split(
+    X, y,
+    test_size=0.3,
+    random_state=32
+)
+
+drugTree = DecisionTreeClassifier(
+    criterion="entropy",
+    max_depth=6
+)
+
+drugTree.fit(X_trainset, y_trainset)
+
+tree_predictions = drugTree.predict(X_testset)
+
+print(
+    "Decision Tree's Accuracy: ",
+    metrics.accuracy_score(
+        y_testset,
+        tree_predictions
+    )
+)
+
+plot_tree(drugTree)
+plt.show()
+```
+
+---
+
+# 5. Decision Tree Regression — Taxi Tip Amount
+
+```python
+from __future__ import print_function
+
+import numpy as np
+import pandas as pd
+import matplotlib.pyplot as plt
+
+%matplotlib inline
+
+from sklearn.model_selection import train_test_split
+from sklearn.preprocessing import normalize
+from sklearn.metrics import mean_squared_error
+from sklearn.tree import DecisionTreeRegressor
+
+import warnings
+warnings.filterwarnings('ignore')
+
+raw_data = pd.read_csv("yellow_tripdata.csv")
+
+raw_data
+
+correlation_values = (
+    raw_data.corr()['tip_amount']
+    .drop('tip_amount')
+)
+
+correlation_values.plot(
+    kind='barh',
+    figsize=(10,6)
+)
+
+y = raw_data[['tip_amount']].values.astype('float32')
+
+proc_data = raw_data.drop(
+    ['tip_amount'],
+    axis=1
+)
+
+X = proc_data.values
+
+X = normalize(
+    X,
+    axis=1,
+    norm='l1',
+    copy=False
+)
+
+X_train, X_test, y_train, y_test = train_test_split(
+    X, y,
+    test_size=0.3,
+    random_state=42
+)
+
+dt_reg = DecisionTreeRegressor(
+    criterion='squared_error',
+    max_depth=8,
+    random_state=35
+)
+
+dt_reg.fit(X_train, y_train)
+
+y_pred = dt_reg.predict(X_test)
+
+mse_score = mean_squared_error(
+    y_test,
+    y_pred
+)
+
+print(
+    'MSE score : {0:.3f}'.format(mse_score)
+)
+
+r2_score = dt_reg.score(
+    X_test,
+    y_test
+)
+
+print(
+    'R^2 score : {0:.3f}'.format(r2_score)
+)
+```
+
+---
+
+# 6. Credit Card Fraud Detection — Decision Tree + Linear SVM
+
+```python
+from __future__ import print_function
+
+import pandas as pd
+import matplotlib.pyplot as plt
+
+%matplotlib inline
+
+from sklearn.model_selection import train_test_split
+from sklearn.preprocessing import normalize, StandardScaler
+from sklearn.utils.class_weight import compute_sample_weight
+from sklearn.tree import DecisionTreeClassifier
+from sklearn.metrics import roc_auc_score
+from sklearn.svm import LinearSVC
+
+import warnings
+warnings.filterwarnings('ignore')
+
+df = pd.read_csv("creditcard(in).csv")
+
+df
+
+labels = df.Class.unique()
+sizes = df.Class.value_counts().values
+
+fig, ax = plt.subplots()
+
+ax.pie(
+    sizes,
+    labels=labels,
+    autopct='%1.3f%%'
+)
+
+ax.set_title('Target Variable Value Counts')
+
+plt.show()
+
+correlation_values = (
+    df.corr()['Class']
+    .drop('Class')
+)
+
+correlation_values.plot(
+    kind='barh',
+    figsize=(10,6)
+)
+
+df.iloc[:, 1:30] = StandardScaler().fit_transform(
+    df.iloc[:, 1:30]
+)
+
+data_matrix = df.values
+
+X = data_matrix[:, 1:30]
+y = data_matrix[:, 30]
+
+X = normalize(
+    X,
+    norm="l1"
+)
+
+X_train, X_test, y_train, y_test = train_test_split(
+    X, y,
+    test_size=0.3,
+    random_state=42
+)
+
+w_train = compute_sample_weight(
+    'balanced',
+    y_train
+)
+
+# Decision Tree
+dt = DecisionTreeClassifier(
+    max_depth=4,
+    random_state=35
+)
+
+dt.fit(
+    X_train,
+    y_train,
+    sample_weight=w_train
+)
+
+y_pred_dt = dt.predict_proba(X_test)[:,1]
+
+roc_auc_dt = roc_auc_score(
+    y_test,
+    y_pred_dt
+)
+
+print(
+    'Decision Tree ROC-AUC score: {:.3f}'.format(
+        roc_auc_dt
+    )
+)
+
+# Linear SVM
+svm = LinearSVC(
+    class_weight='balanced',
+    random_state=31,
+    loss="hinge",
+    fit_intercept=False
+)
+
+svm.fit(X_train, y_train)
+
+y_pred_svm = svm.decision_function(X_test)
+
+roc_auc_svm = roc_auc_score(
+    y_test,
+    y_pred_svm
+)
+
+print(
+    'Linear SVM ROC-AUC score: {:.3f}'.format(
+        roc_auc_svm
+    )
+)
+```
+
+---
+
+# 7. Decision Tree Classifier — Iris
+
+```python
+import pandas as pd
+import matplotlib.pyplot as plt
+import seaborn as sns
+
+from sklearn.datasets import load_iris
+from sklearn.model_selection import train_test_split
+from sklearn.tree import DecisionTreeClassifier, plot_tree
+from sklearn.metrics import (
+    accuracy_score,
+    confusion_matrix,
+    classification_report
+)
+
+iris = load_iris()
+
+X = iris.data
+y = iris.target
+
+df = pd.DataFrame(
+    X,
+    columns=iris.feature_names
+)
+
+df["species"] = y
+
+df.head()
+df.info()
+
+X = df.drop(
+    "species",
+    axis=1
+)
+
+y = iris.target
+
+X_train, X_test, y_train, y_test = train_test_split(
+    X,
+    y,
+    test_size=0.3,
+    random_state=42
+)
+
+dt = DecisionTreeClassifier(
+    random_state=42
+)
+
+dt.fit(X_train, y_train)
+
+y_pred = dt.predict(X_test)
+
+y_pred
+
+accuracy = accuracy_score(
+    y_test,
+    y_pred
+)
+
+print("Accuracy:", accuracy)
+
+print(
+    classification_report(
+        y_test,
+        y_pred,
+        target_names=iris.target_names
+    )
+)
+
+cm = confusion_matrix(
+    y_test,
+    y_pred
+)
+
+sns.heatmap(
+    cm,
+    annot=True,
+    fmt="d",
+    cmap="Blues",
+    xticklabels=iris.target_names,
+    yticklabels=iris.target_names
+)
+
+plt.xlabel("Predicted")
+plt.ylabel("Actual")
+plt.title("Confusion Matrix")
+plt.show()
+
+plt.figure(figsize=(15,10))
+
+plot_tree(
+    dt,
+    feature_names=iris.feature_names,
+    class_names=iris.target_names,
+    filled=True
+)
+
+plt.title("Decision Tree - Iris Dataset")
+plt.show()
+```
+
+## QUICK ORDER TO REMEMBER
+
+**1. Linear Regression**
+→ Load → Clean → Correlation → Select X/y → Scale → Split → Train → Coefficients
+
+**2. Logistic Regression**
+→ Load → Select features → Scale → Split → Train → Predict → Log Loss
+
+**3. Multiclass Logistic**
+→ Load → Scale → Encode → Split → OvA → OvO → Accuracy
+
+**4. Drug Decision Tree**
+→ Load → Encode → Split → Decision Tree → Predict → Accuracy → Plot
+
+**5. Decision Tree Regression**
+→ Load → Correlation → Normalize → Split → Train → Predict → MSE → R²
+
+**6. Fraud Detection**
+→ Load → Scale → Normalize → Split → Class weights → Decision Tree → SVM → ROC-AUC
+
+**7. Iris Decision Tree**
+→ Load → X/y → Split → Tree → Predict → Accuracy → Report → Confusion Matrix → Plot
