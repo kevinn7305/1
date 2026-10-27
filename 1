@@ -1,325 +1,162 @@
-## Principal Component Analysis and Factor Analysis in R
-
-
-mydata<- read.csv("C:/Econometrics/Data/pca_gsp.csv")
-attach(mydata)
-
-# Define variables
-X <- cbind(Ag, Mining, Constr, Manuf, Manuf_nd, Transp, Comm, Energy, TradeW, TradeR, RE, Services, Govt)
-
-# Descriptive statistics
-summary(X)
-cor(X)
-
-# Principal component analysis
-pca1 <- princomp(X, scores=TRUE, cor=TRUE)
-summary(pca1)
-
-# Loadings of principal components
-loadings(pca1)
-#pca1$loadings
-
-# Scree plot of eigenvalues
-plot(pca1)
-screeplot(pca1, type="line", main="Scree Plot")
-
-# Biplot of score variables
-biplot(pca1)
-
-# Scores of the components
-pca1$scores[1:10,]
-
-# Rotation
-varimax(pca1$loadings[,1:3])
-promax(pca1$loadings[,1:3])
-
-
-## Factor analysis 
-fa1 <- factanal(X, factor=3, rotation="none")
-fa1
-
-fa2 <- factanal(X, factor=3, rotation="varimax")
-fa2
-
-fa3 <- factanal(X, factors=3, rotation="varimax", scores="regression")
-fa3
-fa3$scores
-
-fa4 <- factanal(X, factor=3, rotation="promax")
-fa4
-
-# KMO Statistics and Bartlett's Test of Sphericity
-#install.packages("REdaS")
-library(REdaS)
-KMOS(X)
-bart_spher(X)
-
-
-##Cluster Analysis
-mydata <- read.csv("~/2025-26/Jan_MSBA_/utilities.csv")
-attach(mydata)
-
-# Scatter plot 
-plot(Fuel_Cost~Sales, data = mydata)
-with(mydata,text(Fuel_Cost ~ Sales, labels=Company,pos=4))
-
-# Normalization
-z <- mydata[,-c(1,1)]
-z
-means <- apply(z,2,mean)
-sds <- apply(z,2,sd)
-nor <- scale(z,center=means,scale=sds)
-
-# Calculate Euclidean distance matrix  
-distance = dist(nor)
-print(distance, digits=3)
-
-# Hierarchical agglomerative clustering using complete linkage
-mydata.hclust = hclust(distance)
-plot(mydata.hclust)
-plot(mydata.hclust,labels=mydata$Company,main='Default from hclust')
-plot(mydata.hclust,hang=-1)
-
-# Hierarchical agglomerative clustering using "average" linkage 
-mydata.hclusta<-hclust(distance,method="average")
-plot(mydata.hclusta,hang=-1)
-
-# Cluster membership
-member.c = cutree(mydata.hclust,3)
-member.a = cutree(mydata.hclusta,3)
-table(member.c, member.a)
-
-# Characterizing clusters means
-aggregate(nor,list(member.c),mean)
-aggregate(mydata[,-c(1,1)],list(member.c),mean)
-
-# Silhouette Plot
-library(cluster) 
-plot(silhouette(cutree(mydata.hclust,3), distance)) 
-
-# Scree Plot
-wss <- (nrow(nor)-1)*sum(apply(nor,2,var))
-for (i in 2:20) wss[i] <- sum(kmeans(nor, centers=i)$withinss)
-plot(1:20, wss, type="b", xlab="Number of Clusters", ylab="Within groups sum of squares") 
-
-# K-means clustering
-set.seed(123)
-kc<-kmeans(nor,4)
-kc
-plot(Sales~D.Demand,mydata,col=kc$cluster)
-
-
-# ============================================================
-#  SEM Teaching Unit — Complete R Script
-#  Package: lavaan | Dataset: Worland (N=500)
-# ============================================================
-
-if (!require(lavaan)) install.packages('lavaan')
-if (!require(semPlot)) install.packages('semPlot')
-library(lavaan)
-
-# Load data
-dat <- read.csv("https://stats.idre.ucla.edu/wp-content/uploads/2021/02/worland5.csv")
-cov(dat)   # sample covariance matrix
-
-# --- MODEL 1: Simple Regression ---
-m1b <- 'read ~ 1 + motiv'
-fit1b <- sem(m1b, data=dat); summary(fit1b)
-
-# --- MODEL 2: Multiple Regression ---
-m2 <- 'read ~ 1 + ppsych + motiv'
-fit2 <- sem(m2, data=dat); summary(fit2)
-
-# --- MODEL 3: Multivariate Regression ---
-m3a <- '
-  read  ~ ppsych + motiv
-  arith ~ motiv'
-fit3a <- sem(m3a, data=dat); summary(fit3a)
-
-# --- MODEL 4: Path Analysis ---
-m4a <- '
-  read  ~ ppsych + motiv
-  arith ~ motiv + read'
-fit4a <- sem(m4a, data=dat)
-summary(fit4a, fit.measures=TRUE)
-modindices(fit4a, sort=TRUE)
-
-# --- MODEL 5: CFA Measurement Model ---
-m5a <- 'risk =~ verbal + ses + ppsych'
-fit5a <- sem(m5a, data=dat)
-summary(fit5a, standardized=TRUE)
-
-# --- MODEL 6: Full Structural Regression ---
-m6b <- '
-  adjust  =~ motiv + harm + stabi
-  risk    =~ verbal + ses + ppsych
-  achieve =~ read + arith + spell
-  adjust  ~ risk
-  achieve ~ adjust + risk'
-fit6b <- sem(m6b, data=dat)
-summary(fit6b, standardized=TRUE, fit.measures=TRUE)
-
-
-
-
-# ============================================================
-# Exercise 1: Metric MDS on Automotive Brand Data
-# ============================================================
-
-# Install required packages
-# install.packages(c("MASS", "ggplot2", "ggrepel", "smacof"))
-library(MASS)
-library(ggplot2)
-library(ggrepel)
-
-# Similarity data (1=very similar, 9=very dissimilar)
-# 8 automobile brands: Toyota, Honda, Ford, BMW, Mercedes, Maruti, Hyundai, Audi
-
-brands <- c("Toyota","Honda","Ford","BMW","Mercedes","Maruti","Hyundai","Audi")
-
-# Dissimilarity matrix (symmetric)
-dissim <- matrix(c(
-  0, 2, 4, 7, 8, 5, 3, 7,
-  2, 0, 4, 7, 8, 5, 3, 7,
-  4, 4, 0, 6, 7, 4, 4, 6,
-  7, 7, 6, 0, 2, 8, 7, 2,
-  8, 8, 7, 2, 0, 9, 8, 3,
-  5, 5, 4, 8, 9, 0, 2, 8,
-  3, 3, 4, 7, 8, 2, 0, 7,
-  7, 7, 6, 2, 3, 8, 7, 0
-), nrow=8, dimnames=list(brands,brands))
-
-# Run classical (metric) MDS
-mds_result <- cmdscale(dissim, k=2, eig=TRUE)
-
-# Goodness of fit
-eigenvalues <- mds_result$eig
-gof <- sum(eigenvalues[1:2]) / sum(abs(eigenvalues))
-cat("Goodness of Fit:", round(gof, 3), "\n")
-
-# Extract coordinates
-coords <- as.data.frame(mds_result$points)
-colnames(coords) <- c("Dim1", "Dim2")
-coords$Brand <- brands
-
-# Plot perceptual map
-ggplot(coords, aes(x=Dim1, y=Dim2, label=Brand)) +
-  geom_point(size=4, color="steelblue") +
-  geom_text_repel(size=4, fontface="bold") +
-  geom_hline(yintercept=0, linetype="dashed", alpha=0.5) +
-  geom_vline(xintercept=0, linetype="dashed", alpha=0.5) +
-  labs(
-    title="Perceptual Map of Automobile Brands",
-    subtitle=paste("Metric MDS | GoF =", round(gof,3)),
-    x="Dimension 1 (Economy ← → Luxury)",
-    y="Dimension 2 (Practical ← → Sporty)"
-  ) +
-  theme_minimal(base_size=13)
-
-
-
-# ============================================================
-# Exercise 2: Non-Metric MDS using smacof package
-# ============================================================
-install.packages("smacof")
-library(smacof)
-# Convert to dissimilarity object
-dissim <- matrix(c(
-  0, 2, 4, 7, 8, 5, 3, 7,
-  2, 0, 4, 7, 8, 5, 3, 7,
-  4, 4, 0, 6, 7, 4, 4, 6,
-  7, 7, 6, 0, 2, 8, 7, 2,
-  8, 8, 7, 2, 0, 9, 8, 3,
-  5, 5, 4, 8, 9, 0, 2, 8,
-  3, 3, 4, 7, 8, 2, 0, 7,
-  7, 7, 6, 2, 3, 8, 7, 0
-), nrow=8, dimnames=list(brands,brands))
-
-dissim
-
-diss_obj <- max(dissim) - dissim
-diag(diss_obj) <- 0
-# Run non-metric MDS
-nmds_result <- mds(diss_obj, ndim=2, type="ordinal")
-
-# Stress value
-cat("Stress-1:", round(nmds_result$stress, 4), "\n")
-
-# Shepard diagram
-plot(nmds_result, plot.type="Shepard",
-     main="Shepard Diagram - Non-metric MDS")
-
-# Stress by dimensions (scree plot)
-stress_vals <- numeric(5)
-for(d in 1:5){
-  fit <- mds(diss_obj, ndim=d, type="ordinal")
-  stress_vals[d] <- fit$stress
-}
-plot(1:5, stress_vals, type="b", pch=19, col="tomato",
-     xlab="Number of Dimensions", ylab="Stress",
-     main="Scree Plot: Stress vs. Dimensions")
-abline(h=0.05, lty=2, col="gray50")
-
-# Configuration plot
-plot(nmds_result, main="Non-Metric MDS: Automobile Brands")
-
-# ============================================================
-# Exercise 3: Correspondence Analysis - Brand × Attribute
-# ============================================================
-install.packages("FactoMineR")
-install.packages("factoextra")
-library(FactoMineR)
-library(factoextra)
-# Brand-Attribute contingency table
-brand_attr <- matrix(c(
-  95, 30, 15,  5, 10, 20,   # Brand A
-  20, 80, 40, 10, 25, 30,   # Brand B
-  10, 15, 90,  5, 60, 35,   # Brand C
-  5, 10, 20, 95, 15, 25,   # Brand D
-  15, 20, 30, 10, 80, 70    # Brand E
-), nrow=5, byrow=TRUE)
-
-rownames(brand_attr) <- c("BrandA","BrandB","BrandC","BrandD","BrandE")
-colnames(brand_attr) <- c("Affordable","Reliable","Stylish","EcoFriendly","Premium","Innovative")
-
-# Chi-square test of independence
-chisq_test <- chisq.test(brand_attr)
-cat("Chi-square:", round(chisq_test$statistic, 2),
-    "| df:", chisq_test$parameter,
-    "| p-value:", format(chisq_test$p.value, digits=3), "\n")
-
-# Run Correspondence Analysis
-ca_result <- CA(brand_attr, graph=FALSE)
-
-# Summary of results
-summary(ca_result)
-
-# Eigenvalues and inertia
-cat("\n--- Inertia explained ---\n")
-print(ca_result$eig)
-
-# Row contributions and quality
-cat("\n--- Row (Brand) Coordinates ---\n")
-print(ca_result$row$coord)
-
-cat("\n--- Row Contributions (%) ---\n")
-print(round(ca_result$row$contrib, 2))
-
-cat("\n--- Row Quality (cos2) ---\n")
-print(round(ca_result$row$cos2, 3))
-
-# Symmetric biplot
-
-fviz_ca_biplot(
-  ca_result,
-  repel = TRUE,
-  title = "CA Biplot: Brand × Attribute Associations"
-)
-
-# Column (attribute) contributions to each dimension
-fviz_contrib(ca_result, choice="col", axes=1,
-             title="Column Contributions to Dimension 1")
-fviz_contrib(ca_result, choice="col", axes=2,
-             title="Column Contributions to Dimension 2")
-
-
+cat > word.txt <<'EOF'
+Hello world
+Hello Hadoop
+EOF
+
+cat > mapper.py <<'EOF'
+#!/usr/bin/env python
+import sys
+for line in sys.stdin:
+    words = line.strip().split()
+    for word in words:
+        print("%s\t%s" % (word, 1))
+EOF
+
+cat > reducer.py <<'EOF'
+#!/usr/bin/env python
+import sys
+counts = {}
+for line in sys.stdin:
+    word, count = line.strip().split('\t')
+    counts[word] = counts.get(word, 0) + int(count)
+for word, count in counts.items():
+    print("%s\t%s" % (word, count))
+EOF
+
+cat > titanic.txt <<'EOF'
+Owen,male,22
+Hannah,female,38
+Laina,female,26
+Lily,female,35
+Allen,male,35
+Jack,male,28
+Emma,female,31
+Thomas,male,42
+Sophia,female,24
+William,male,30
+EOF
+
+cat > mapper2.py <<'EOF'
+#!/usr/bin/env python
+import sys
+import csv
+reader = csv.reader(sys.stdin)
+for line in reader:
+    if len(line) > 2:
+        print('%s,%s' % (line[1], line[2]))
+EOF
+
+cat > reducer2.py <<'EOF'
+#!/usr/bin/env python
+import sys
+data = {}
+for line in sys.stdin:
+    gender, age = line.strip().split(',')
+    if gender not in data:
+        data[gender] = [0, 0]
+    data[gender][0] += float(age)
+    data[gender][1] += 1
+for gender, values in data.items():
+    average = values[0] / values[1]
+    print("%s = %s" % (gender, average))
+EOF
+
+cat > word1.txt <<'EOF'
+1,pooja,R,20
+2,sam,Thomas,25
+3,priya,S,20
+4,pavan,Rao,20
+EOF
+
+cat > lab3.pig <<'EOF'
+A = LOAD 'word1.txt' USING PigStorage(',') AS (id:int, first_name:chararray, last_name:chararray, age:int);
+B = FOREACH A GENERATE UPPER(SUBSTRING(first_name, 0, 1)) AS first_letter;
+C = GROUP B BY first_letter;
+D = FOREACH C GENERATE group AS first_letter, COUNT(B) AS count;
+E = ORDER D BY count DESC;
+F = LIMIT E 1;
+DUMP F;
+EOF
+
+cat > rdd.py <<'EOF'
+from pyspark import SparkContext
+from pyspark.sql import SQLContext
+sc = SparkContext()
+sql = SQLContext(sc)
+rdd = sc.parallelize([
+    (1, "AIML", 69),
+    (2, "CS", 72),
+    (3, "ECE", 99)
+])
+df = sql.createDataFrame(rdd, ["No", "Dept", "No_of_students"])
+df.show()
+sc.stop()
+EOF
+
+cat > run1.sh <<'EOF'
+cd ~
+echo "===== LAB 1 : WORD COUNT ====="
+echo "--- Mapper output ---"
+cat word.txt | python mapper.py
+echo "--- Local MapReduce result ---"
+cat word.txt | python mapper.py | sort | python reducer.py
+hdfs dfs -mkdir -p prg1
+hdfs dfs -put -f /home/cloudera/word.txt /user/cloudera/prg1
+hdfs dfs -ls /user/cloudera/prg1
+hdfs dfs -rm -r -f /user/cloudera/prg1/output
+chmod 777 mapper.py reducer.py
+hadoop jar /usr/lib/hadoop-mapreduce/hadoop-streaming.jar -input /user/cloudera/prg1/word.txt -output /user/cloudera/prg1/output -mapper /home/cloudera/mapper.py -reducer /home/cloudera/reducer.py
+echo "===== HADOOP OUTPUT ====="
+hdfs dfs -cat /user/cloudera/prg1/output/part-00000
+EOF
+
+cat > run2.sh <<'EOF'
+cd ~
+echo "===== LAB 2 : TITANIC AVERAGE AGE ====="
+echo "--- Mapper output ---"
+cat titanic.txt | python mapper2.py
+echo "--- Local MapReduce result ---"
+cat titanic.txt | python mapper2.py | sort | python reducer2.py
+hdfs dfs -mkdir -p prg2
+hdfs dfs -put -f /home/cloudera/titanic.txt /user/cloudera/prg2
+hdfs dfs -ls /user/cloudera/prg2
+hdfs dfs -rm -r -f /user/cloudera/prg2/output
+chmod 777 mapper2.py reducer2.py
+hadoop jar /usr/lib/hadoop-mapreduce/hadoop-streaming.jar -input /user/cloudera/prg2/titanic.txt -output /user/cloudera/prg2/output -mapper /home/cloudera/mapper2.py -reducer /home/cloudera/reducer2.py
+echo "===== HADOOP OUTPUT ====="
+hdfs dfs -cat /user/cloudera/prg2/output/part-00000
+EOF
+
+cat > run3.sh <<'EOF'
+cd ~
+echo "===== LAB 3 : PIG MOST OCCURRING START LETTER ====="
+cat lab3.pig
+pig -x local lab3.pig
+EOF
+
+cat > run4.sh <<'EOF'
+cd ~
+echo "===== LAB 4 : HDFS FILE MANAGEMENT ====="
+hdfs dfs -rm -r -f /user/cloudera/lab4
+echo "--- 1. Create directory ---"
+hdfs dfs -mkdir lab4
+echo "--- 2. List directory ---"
+hdfs dfs -ls /user/cloudera/lab4
+echo "--- 3. Copy file from local to HDFS ---"
+hdfs dfs -put /home/cloudera/titanic.txt /user/cloudera/lab4
+hdfs dfs -ls /user/cloudera/lab4
+echo "--- 4. View file contents ---"
+hdfs dfs -cat /user/cloudera/lab4/titanic.txt
+echo "--- 5. Delete directory ---"
+hdfs dfs -rm -r /user/cloudera/lab4
+hdfs dfs -ls
+EOF
+
+cat > run5.sh <<'EOF'
+cd /home/cloudera
+echo LAB 5 SPARK RDD TO DATAFRAME
+spark-submit rdd.py
+EOF
+
+chmod 777 *.py *.sh
+ls
