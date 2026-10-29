@@ -1,162 +1,265 @@
-cat > word.txt <<'EOF'
-Hello world
-Hello Hadoop
-EOF
+from sklearn.datasets import fetch_20newsgroups
 
-cat > mapper.py <<'EOF'
-#!/usr/bin/env python
-import sys
-for line in sys.stdin:
-    words = line.strip().split()
-    for word in words:
-        print("%s\t%s" % (word, 1))
-EOF
+import pandas as pd
+from sklearn.model_selection import train_test_split
+from sklearn.feature_extraction.text import TfidfVectorizer
+from sklearn.linear_model import LogisticRegression
+from sklearn.naive_bayes import MultinomialNB
+from sklearn.metrics import accuracy_score, classification_report
 
-cat > reducer.py <<'EOF'
-#!/usr/bin/env python
-import sys
-counts = {}
-for line in sys.stdin:
-    word, count = line.strip().split('\t')
-    counts[word] = counts.get(word, 0) + int(count)
-for word, count in counts.items():
-    print("%s\t%s" % (word, count))
-EOF
+newsgroups=fetch_20newsgroups(subset='all')
 
-cat > titanic.txt <<'EOF'
-Owen,male,22
-Hannah,female,38
-Laina,female,26
-Lily,female,35
-Allen,male,35
-Jack,male,28
-Emma,female,31
-Thomas,male,42
-Sophia,female,24
-William,male,30
-EOF
+x,y=newsgroups.data, newsgroups.target
 
-cat > mapper2.py <<'EOF'
-#!/usr/bin/env python
-import sys
-import csv
-reader = csv.reader(sys.stdin)
-for line in reader:
-    if len(line) > 2:
-        print('%s,%s' % (line[1], line[2]))
-EOF
+xtrain,xtest,ytrain,ytest=train_test_split(x,y,test_size=0.2,random_state=42)
 
-cat > reducer2.py <<'EOF'
-#!/usr/bin/env python
-import sys
-data = {}
-for line in sys.stdin:
-    gender, age = line.strip().split(',')
-    if gender not in data:
-        data[gender] = [0, 0]
-    data[gender][0] += float(age)
-    data[gender][1] += 1
-for gender, values in data.items():
-    average = values[0] / values[1]
-    print("%s = %s" % (gender, average))
-EOF
+vectorizer=TfidfVectorizer(stop_words='english',max_df=0.5)
 
-cat > word1.txt <<'EOF'
-1,pooja,R,20
-2,sam,Thomas,25
-3,priya,S,20
-4,pavan,Rao,20
-EOF
+x_train_tfdif=vectorizer.fit_transform(xtrain)
+x_test_tfdif=vectorizer.transform(xtest)
 
-cat > lab3.pig <<'EOF'
-A = LOAD 'word1.txt' USING PigStorage(',') AS (id:int, first_name:chararray, last_name:chararray, age:int);
-B = FOREACH A GENERATE UPPER(SUBSTRING(first_name, 0, 1)) AS first_letter;
-C = GROUP B BY first_letter;
-D = FOREACH C GENERATE group AS first_letter, COUNT(B) AS count;
-E = ORDER D BY count DESC;
-F = LIMIT E 1;
-DUMP F;
-EOF
+nb_classifier=MultinomialNB()
 
-cat > rdd.py <<'EOF'
-from pyspark import SparkContext
-from pyspark.sql import SQLContext
-sc = SparkContext()
-sql = SQLContext(sc)
-rdd = sc.parallelize([
-    (1, "AIML", 69),
-    (2, "CS", 72),
-    (3, "ECE", 99)
+nb_classifier.fit(x_train_tfdif,ytrain)
+
+y_pred=nb_classifier.predict(x_test_tfdif)
+
+accuracy=accuracy_score(ytest,y_pred)
+
+class_report=classification_report(ytest,y_pred,target_names=newsgroups.target_names)
+
+print(f"Accuracy Score: {accuracy*100:.2f}%\n")
+print(f"Classification Report:\n{class_report}")
+
+from sklearn.datasets import load_iris
+from sklearn.model_selection import train_test_split
+from sklearn.naive_bayes import GaussianNB
+from sklearn.metrics import accuracy_score, classification_report, confusion_matrix
+import pandas as pd
+
+iris=load_iris()
+x=iris.data 
+y=iris.target 
+
+x_train,x_test,y_train,y_test=train_test_split(x,y,test_size=0.2,random_state=42)
+
+model=GaussianNB()
+model.fit(x_train,y_train)
+
+y_pred=model.predict(x_test)
+
+print(f"Accuracy: {accuracy_score(y_test,y_pred)*100:.2f}%")
+print("\nClassification report:\n", classification_report(y_test,y_pred, target_names=iris.target_names))
+
+df=pd.read_csv("creditcard(in).csv")
+df.head()
+
+x=df.drop('Class',axis=1)
+y=df['Class']
+
+x_train,x_test,y_train,y_test=train_test_split(x,y,test_size=0.2,random_state=42)
+
+model=GaussianNB()
+model.fit(x_train,y_train)
+
+y_pred=model.predict(x_test)
+
+print(f"Accuracy: {accuracy_score(y_test,y_pred)*100:.2f}%")
+print("\nClassification report:\n", classification_report(y_test,y_pred))
+
+cm = confusion_matrix(y_test, y_pred)
+cm
+
+import pandas as pd
+from sklearn.model_selection import train_test_split
+from sklearn.feature_extraction.text import TfidfVectorizer
+from sklearn.linear_model import LogisticRegression
+from sklearn.naive_bayes import MultinomialNB
+from sklearn.metrics import accuracy_score
+
+data= { 
+    'text': [ 
+        " I absolutely love this product, it works perfectly!", 
+        "This is the worst purchase I have ever made.",
+        "It's okay, nothing special but does the job.",
+        "Fantastic customer service and beautiful design.",
+        "Horrible quality, it broke on the first day.",
+        "I am highly satisfied with the fast shipping.",
+        "Waste of money. Do not buy this product.",
+        "Pretty good value for the price, I recommend it.", 
+        "item arrived late and the product was damaged, very disappointed." 
+    ],
+    'sentiment': ['positive','negative','neutral', 'positive', 'negative', 'positive', 'negative', 'positive', 'negative'] 
+}
+
+df=pd.DataFrame(data)
+
+x=df["text"]
+y=df["sentiment"]
+
+xtrain, xtest, ytrain, ytest=train_test_split(x,y,test_size=0.2,random_state=42)
+
+vectorize=TfidfVectorizer(stop_words="english",lowercase=True)
+x_train_vec=vectorize.fit_transform(xtrain)
+x_test_vec=vectorize.transform(xtest)
+
+lr_model=LogisticRegression() 
+lr_model.fit(x_train_vec,ytrain)
+
+nb_model=MultinomialNB()
+nb_model.fit(x_train_vec,ytrain)
+
+lr_preds= lr_model.predict(x_test_vec)
+nb_preds=nb_model.predict(x_test_vec)
+
+print("---Model Accuracy Comparison---")
+print(f"Logistic regression accuracy: {accuracy_score(ytest,lr_preds)*100:.2f}%")
+print(f"Multinomial Naive bayes accuracy: {accuracy_score(ytest,nb_preds)*100:.2f}%")
+
+def predict_sentiment(new_texts):
+    new_texts_vec = vectorize.transform(new_texts)
+    
+    lr_predictions = lr_model.predict(new_texts_vec)
+    nb_predictions = nb_model.predict(new_texts_vec)
+ 
+    print("--- Testing Custom Input ---")
+    for text, lr_pred, nb_pred in zip(new_texts, lr_predictions, nb_predictions):
+        print(f"Text: '{text}'")
+        print(f"   -> LR Prediction: **{lr_pred.upper()}**")
+        print(f"   -> NB Prediction: **{nb_pred.upper()}**\n")
+
+custom_samples = ["The item arrived broken and late.","it is an amazing product", "It works incredibly well, love it!", "not worht the money","looks good"]
+predict_sentiment(custom_samples)
+
+import pandas as pd
+from sklearn.datasets import load_iris
+from sklearn.model_selection import train_test_split, GridSearchCV, StratifiedKFold
+from sklearn.preprocessing import StandardScaler
+from sklearn.decomposition import PCA
+from sklearn.neighbors import KNeighborsClassifier
+from sklearn.pipeline import Pipeline
+from sklearn.metrics import confusion_matrix
+import seaborn as sns
+import matplotlib.pyplot as plt
+
+data=load_iris()
+x,y=data.data,data.target 
+label=data.target_names
+
+pipeline=Pipeline([
+    ("scaler",StandardScaler()), # standardise the features
+    ("pca",PCA(n_components=2)), # reduce the dimention to 2 usinng pca
+    ("knn",KNeighborsClassifier(n_neighbors=5,))
 ])
-df = sql.createDataFrame(rdd, ["No", "Dept", "No_of_students"])
-df.show()
-sc.stop()
-EOF
 
-cat > run1.sh <<'EOF'
-cd ~
-echo "===== LAB 1 : WORD COUNT ====="
-echo "--- Mapper output ---"
-cat word.txt | python mapper.py
-echo "--- Local MapReduce result ---"
-cat word.txt | python mapper.py | sort | python reducer.py
-hdfs dfs -mkdir -p prg1
-hdfs dfs -put -f /home/cloudera/word.txt /user/cloudera/prg1
-hdfs dfs -ls /user/cloudera/prg1
-hdfs dfs -rm -r -f /user/cloudera/prg1/output
-chmod 777 mapper.py reducer.py
-hadoop jar /usr/lib/hadoop-mapreduce/hadoop-streaming.jar -input /user/cloudera/prg1/word.txt -output /user/cloudera/prg1/output -mapper /home/cloudera/mapper.py -reducer /home/cloudera/reducer.py
-echo "===== HADOOP OUTPUT ====="
-hdfs dfs -cat /user/cloudera/prg1/output/part-00000
-EOF
+xtrain, xtest, ytrain, ytest= train_test_split(x,y, test_size=0.2, random_state=42, stratify=y)
 
-cat > run2.sh <<'EOF'
-cd ~
-echo "===== LAB 2 : TITANIC AVERAGE AGE ====="
-echo "--- Mapper output ---"
-cat titanic.txt | python mapper2.py
-echo "--- Local MapReduce result ---"
-cat titanic.txt | python mapper2.py | sort | python reducer2.py
-hdfs dfs -mkdir -p prg2
-hdfs dfs -put -f /home/cloudera/titanic.txt /user/cloudera/prg2
-hdfs dfs -ls /user/cloudera/prg2
-hdfs dfs -rm -r -f /user/cloudera/prg2/output
-chmod 777 mapper2.py reducer2.py
-hadoop jar /usr/lib/hadoop-mapreduce/hadoop-streaming.jar -input /user/cloudera/prg2/titanic.txt -output /user/cloudera/prg2/output -mapper /home/cloudera/mapper2.py -reducer /home/cloudera/reducer2.py
-echo "===== HADOOP OUTPUT ====="
-hdfs dfs -cat /user/cloudera/prg2/output/part-00000
-EOF
+pipeline.fit(xtrain,ytrain)
 
-cat > run3.sh <<'EOF'
-cd ~
-echo "===== LAB 3 : PIG MOST OCCURRING START LETTER ====="
-cat lab3.pig
-pig -x local lab3.pig
-EOF
+# accuracy
+test_score=pipeline.score(xtest,ytest)
+print(f"pipeline accuracy\n-----------------\ntest score: {test_score:.3f}")
 
-cat > run4.sh <<'EOF'
-cd ~
-echo "===== LAB 4 : HDFS FILE MANAGEMENT ====="
-hdfs dfs -rm -r -f /user/cloudera/lab4
-echo "--- 1. Create directory ---"
-hdfs dfs -mkdir lab4
-echo "--- 2. List directory ---"
-hdfs dfs -ls /user/cloudera/lab4
-echo "--- 3. Copy file from local to HDFS ---"
-hdfs dfs -put /home/cloudera/titanic.txt /user/cloudera/lab4
-hdfs dfs -ls /user/cloudera/lab4
-echo "--- 4. View file contents ---"
-hdfs dfs -cat /user/cloudera/lab4/titanic.txt
-echo "--- 5. Delete directory ---"
-hdfs dfs -rm -r /user/cloudera/lab4
-hdfs dfs -ls
-EOF
+ypred=pipeline.predict(xtest)
 
-cat > run5.sh <<'EOF'
-cd /home/cloudera
-echo LAB 5 SPARK RDD TO DATAFRAME
-spark-submit rdd.py
-EOF
+pipeline=Pipeline([
+    ("scaler",StandardScaler()),
+    ("pca",PCA()),
+    ("knn",KNeighborsClassifier())
+])
 
-chmod 777 *.py *.sh
-ls
+param_grid={"pca__n_components": [2,3],
+           "knn__n_neighbors": [3,5,7]
+           }
+
+cv=StratifiedKFold(n_splits=5, shuffle=True, random_state=42)
+
+best_model=GridSearchCV(estimator=pipeline,
+                       param_grid=param_grid,
+                       cv=cv,
+                       scoring="accuracy",
+                       verbose=2)
+
+best_model.fit(xtrain,ytrain)
+
+test_score=best_model.score(xtest,ytest)
+print(f"test score: {test_score:.3f}")
+
+best_model.best_params_
+
+from sklearn.datasets import load_iris
+from sklearn.model_selection import train_test_split
+from sklearn.ensemble import RandomForestClassifier
+from sklearn.metrics import accuracy_score, classification_report
+
+x_train, x_test, y_train, y_test= train_test_split(x,y, test_size=0.35, random_state=42)
+
+rf_classifier = RandomForestClassifier(n_estimators=100, random_state=42)
+
+rf_classifier.fit(x_train,y_train)
+
+y_pred=rf_classifier.predict(x_test)
+
+accuracy=accuracy_score(y_test,y_pred)
+classification_rep = classification_report(y_test, y_pred)
+print(f"accuracy: {accuracy*100:.2f}%")
+print("classification report:")
+print(classification_rep)
+
+import matplotlib.pyplot as plt
+import pandas as pd
+import seaborn as sns
+from sklearn.datasets import load_iris
+from sklearn.model_selection import train_test_split
+from sklearn.metrics import accuracy_score, classification_report, confusion_matrix
+from xgboost import XGBClassifier, plot_importance
+
+iris=load_iris()
+x=iris.data
+y=iris.target
+feature_names=iris.feature_names
+target_name=iris.target_names
+
+x_train, x_test, y_train, y_test= train_test_split(x,y, test_size=0.2, random_state=42)
+
+model= XGBClassifier(
+    objective="multi:softprob",
+    num_class=3,
+    random_state=42,
+    eval_metric="mlogloss"
+)
+model.fit(x_train,y_train)
+
+y_pred=model.predict(x_test)
+
+print(f"XGBoost accuracy: {accuracy_score(y_test, y_pred)*100:.2f}%\n")
+print(
+    "Classifiction report:\n",
+    classification_report(y_test,y_pred, target_names=target_name),
+)
+
+cm=confusion_matrix(y_test,y_pred)
+
+plt.figure(figsize=(6,4.5))
+sns.heatmap(
+    cm,
+    annot= True,
+    fmt="d",
+    cmap="Blues",
+    xticklabels=target_name,
+    yticklabels=target_name,
+    cbar=False,
+    annot_kws={"size":14, "weight": "bold"},
+)
+plt.title("xgboost classification confution matrix")
+plt.xlabel("predicted species group")
+plt.ylabel("actual species group")
+plt.tight_layout()
+plt.show()
+
+plt.figure(figsize=(8,4))
+plot_importance(model, importance_type="weight", grid=False, color="skyblue")
+plt.title("XGBoost feature importance - iris dataset",fontsize=14, pad=15)
+plt.tight_layout()
+plt.show()
+
