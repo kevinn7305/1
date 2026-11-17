@@ -10,7 +10,7 @@ from sklearn.pipeline import Pipeline
 from sklearn.preprocessing import LabelEncoder, OneHotEncoder, StandardScaler, normalize
 from sklearn.utils.class_weight import compute_sample_weight
 
-from sklearn.model_selection import GridSearchCV, StratifiedKFold, train_test_split
+from sklearn.model_selection import GridSearchCV, StratifiedKFold, train_test_split, cross_val_score, KFold
 
 from sklearn import datasets, linear_model, metrics, preprocessing
 from sklearn.datasets import fetch_20newsgroups, load_iris
@@ -22,6 +22,7 @@ from sklearn.naive_bayes import GaussianNB, MultinomialNB
 from sklearn.neighbors import KNeighborsClassifier
 from sklearn.svm import LinearSVC, SVC
 from sklearn.tree import DecisionTreeClassifier, DecisionTreeRegressor, plot_tree
+from sklearn.ensemble import RandomForestClassifier
 
 from sklearn.metrics import accuracy_score, classification_report, confusion_matrix, log_loss, mean_absolute_error, mean_squared_error, r2_score, roc_auc_score
 
@@ -776,3 +777,76 @@ plt.plot(x_train,regressor.coef_*x_train+regressor.intercept_,"-b")
 plt.xlabel("Engine size")
 plt.ylabel("CO2 Emission")
 plt.show()
+
+
+
+# Random Forest and XGBoost Comparison with Cross-Validation and Feature Importance
+#Load data
+df=pd.read_excel("ChurnData.xlsx")
+df.head()
+
+#preprocessing the data 
+target_col='churn'
+
+if target_col not in df.columns:
+    target_col=df.columns[-1]
+    print(f"'{target_col}' not found. Using the last column'{target_col}'as.target.")
+
+#handle missing values 
+df=df.dropna()
+
+#encode categorical text variables
+le=LabelEncoder()
+for col in df.select_dtypes(include=['object']).columns:
+    df[col]=le.fit_transform(df[col])
+
+#split features and target 
+X=df.drop(columns=[target_col])
+y=df[target_col]
+
+#split into train/test sets 
+X_train, X_test, y_train, y_test=train_test_split(X,y, test_size=0.2, random_state=42, stratify=y)
+
+#model initialization 
+
+models={
+    "Random Forest":RandomForestClassifier(n_estimators=100, random_state=42),
+    "XGBoost":XGBClassifier(n_estimators=100, learning_rate=0.1, random_state=42, eval_metric='logloss')
+}
+
+
+#Evaluation and cross validation loop 
+kf=KFold(n_splits=5, shuffle=True, random_state=42)
+
+for name, model in models.items():
+    print("\n"+"="*50)
+    print(f"MODEL:{name}")
+    print("="*50)
+
+#fit model 
+
+    model.fit(X_train, y_train)
+    y_pred=model.predict(X_test)
+
+#classification report 
+    print("\n[Classification Report]")
+    print(classification_report(y_test, y_pred))
+
+#confusion matrix 
+    print("[Confusion Matrix]")
+    cm=confusion_matrix(y_test, y_pred)
+    print(cm)
+
+#5-fold cross validation
+    cv_scores=cross_val_score(model, X_train, y_train, cv=kf, scoring="accuracy")
+    print(f'\n[5-Fold Cross-Validation Accuracy]')
+    print(f"Scores per fold:{cv_scores}")
+    print(f"Mean Accuracy:{cv_scores.mean():.4f}(+/-{cv_scores.std()*2:.4f})")
+
+#feature importance 
+    print("\n[Top % important features]")
+    importances=model.feature_importances_
+    indices=np.argsort(importances)[::-1]
+
+    for i in range(min(5, len(X.columns))):
+        print(f"{i+1}. {X.columns[indices[i]]}:{importances[indices[i]]:.4f}")
