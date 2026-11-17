@@ -1,67 +1,83 @@
-from sklearn.datasets import fetch_20newsgroups, load_iris
-from sklearn.decomposition import PCA
-from sklearn.ensemble import RandomForestClassifier
-from sklearn.feature_extraction.text import TfidfVectorizer
-from sklearn.linear_model import LogisticRegression
-from sklearn.metrics import accuracy_score, classification_report, confusion_matrix, ConfusionMatrixDisplay
-from sklearn.model_selection import train_test_split, GridSearchCV, StratifiedKFold, cross_val_score, KFold
-from sklearn.naive_bayes import MultinomialNB, GaussianNB
-from sklearn.neighbors import KNeighborsClassifier
-from sklearn.pipeline import Pipeline
-from sklearn.preprocessing import StandardScaler, LabelEncoder, normalize
-from xgboost import XGBClassifier, plot_importance
+from __future__ import print_function
+
+import matplotlib.pyplot as plt
+import numpy as np
 import pandas as pd
 import seaborn as sns
-import matplotlib.pyplot as plt
-import os
-import numpy as np
 
-newsgroups=fetch_20newsgroups(subset='all')
+from sklearn.decomposition import PCA
+from sklearn.pipeline import Pipeline
+from sklearn.preprocessing import LabelEncoder, OneHotEncoder, StandardScaler, normalize
+from sklearn.utils.class_weight import compute_sample_weight
 
-x,y=newsgroups.data, newsgroups.target
+from sklearn.model_selection import GridSearchCV, StratifiedKFold, train_test_split
+
+from sklearn import datasets, linear_model, metrics, preprocessing
+from sklearn.datasets import fetch_20newsgroups, load_iris
+
+from sklearn.cluster import KMeans
+from sklearn.linear_model import LogisticRegression
+from sklearn.multiclass import OneVsOneClassifier
+from sklearn.naive_bayes import GaussianNB, MultinomialNB
+from sklearn.neighbors import KNeighborsClassifier
+from sklearn.svm import LinearSVC, SVC
+from sklearn.tree import DecisionTreeClassifier, DecisionTreeRegressor, plot_tree
+
+from sklearn.metrics import accuracy_score, classification_report, confusion_matrix, log_loss, mean_absolute_error, mean_squared_error, r2_score, roc_auc_score
+
+from xgboost import XGBClassifier, plot_importance
+
+from sklearn.feature_extraction.text import TfidfVectorizer
+
+%matplotlib inline
+import warnings
+warnings.filterwarnings("ignore")
+
+# Text Classification with Multinomial Naive Bayes
+newsgroups=fetch_20newsgroups(subset='all') 
+
+x,y=newsgroups.data,newsgroups.target
 
 xtrain,xtest,ytrain,ytest=train_test_split(x,y,test_size=0.2,random_state=42)
 
-vectorizer=TfidfVectorizer(stop_words='english',max_df=0.5)
+vectorizer=TfidfVectorizer(stop_words="english",max_df=0.5)
 
-x_train_tfdif=vectorizer.fit_transform(xtrain)
+x_train_tfdif=vectorizer.fit_transform(xtrain) 
 x_test_tfdif=vectorizer.transform(xtest)
 
-nb_classifier=MultinomialNB()
+nb_classifier=MultinomialNB() 
 
 nb_classifier.fit(x_train_tfdif,ytrain)
 
 y_pred=nb_classifier.predict(x_test_tfdif)
 
-accuracy=accuracy_score(ytest,y_pred)
+accuracy=accuracy_score(ytest,y_pred) 
 
 class_report=classification_report(ytest,y_pred,target_names=newsgroups.target_names)
 
-print(f"Accuracy Score: {accuracy*100:.2f}%\n")
+print(f"Accuracy: {accuracy*100:.2f}%\n")
 print(f"Classification Report:\n{class_report}")
 
-
-iris=load_iris()
+# Iris Classification with Gaussian Naive Bayes
+iris=load_iris() 
 x=iris.data 
 y=iris.target 
 
-x_train,x_test,y_train,y_test=train_test_split(x,y,test_size=0.2,random_state=42)
+x_train, x_test, y_train, y_test=train_test_split(x, y, test_size=0.2, random_state=42)
 
 model=GaussianNB()
 model.fit(x_train,y_train)
 
 y_pred=model.predict(x_test)
 
-print(f"Accuracy: {accuracy_score(y_test,y_pred)*100:.2f}%")
-print("\nClassification report:\n", classification_report(y_test,y_pred, target_names=iris.target_names))
-
+# Credit Card Fraud Classification
 df=pd.read_csv("creditcard(in).csv")
 df.head()
 
 x=df.drop('Class',axis=1)
 y=df['Class']
 
-x_train,x_test,y_train,y_test=train_test_split(x,y,test_size=0.2,random_state=42)
+x_train, x_test, y_train, y_test=train_test_split(x, y, test_size=0.2, random_state=42)
 
 model=GaussianNB()
 model.fit(x_train,y_train)
@@ -74,7 +90,7 @@ print("\nClassification report:\n", classification_report(y_test,y_pred))
 cm = confusion_matrix(y_test, y_pred)
 cm
 
-
+# Sentiment Analysis: Logistic Regression vs Naive Bayes
 data= { 
     'text': [ 
         " I absolutely love this product, it works perfectly!", 
@@ -101,8 +117,8 @@ vectorize=TfidfVectorizer(stop_words="english",lowercase=True)
 x_train_vec=vectorize.fit_transform(xtrain)
 x_test_vec=vectorize.transform(xtest)
 
-lr_model=LogisticRegression() 
-lr_model.fit(x_train_vec,ytrain)
+lr_model=LogisticRegression()
+lr_model.fit(x_train_vec, ytrain)
 
 nb_model=MultinomialNB()
 nb_model.fit(x_train_vec,ytrain)
@@ -129,10 +145,10 @@ def predict_sentiment(new_texts):
 custom_samples = ["The item arrived broken and late.","it is an amazing product", "It works incredibly well, love it!", "not worht the money","looks good"]
 predict_sentiment(custom_samples)
 
-
-data=load_iris()
+# Iris Classification with PCA, KNN and Grid Search
+data=load_iris() 
 x,y=data.data,data.target 
-label=data.target_names
+labels=data.target_names
 
 pipeline=Pipeline([
     ("scaler",StandardScaler()), # standardise the features
@@ -142,30 +158,41 @@ pipeline=Pipeline([
 
 xtrain, xtest, ytrain, ytest= train_test_split(x,y, test_size=0.2, random_state=42, stratify=y)
 
-pipeline.fit(xtrain,ytrain)
-
-# accuracy
-test_score=pipeline.score(xtest,ytest)
+pipeline.fit(xtrain,ytrain) 
+test_score=pipeline.score(xtest,ytest) 
 print(f"pipeline accuracy\n-----------------\ntest score: {test_score:.3f}")
 
 ypred=pipeline.predict(xtest)
 
+conf_matrix=confusion_matrix(ytest, ypred)
+
+# plotting confution matrix
+plt.figure()
+sns.heatmap(conf_matrix, annot= True, cmap="Blues", fmt="d",
+           xticklabels=labels, yticklabels=labels)
+
+# set the title ans labels
+plt.title("classification pipeline confusion matrix")
+plt.xlabel("Predicted")
+plt.ylabel("Actual")
+plt.show()
+
 pipeline=Pipeline([
-    ("scaler",StandardScaler()),
-    ("pca",PCA()),
+    ("scaler",StandardScaler()), 
+    ("pca",PCA()), 
     ("knn",KNeighborsClassifier())
 ])
 
-param_grid={"pca__n_components": [2,3],
-           "knn__n_neighbors": [3,5,7]
+param_grid={"pca__n_components": [2,3], 
+           "knn__n_neighbors": [3,5,7] 
            }
 
-cv=StratifiedKFold(n_splits=5, shuffle=True, random_state=42)
+cv=StratifiedKFold(n_splits=5,shuffle=True,random_state=42)
 
-best_model=GridSearchCV(estimator=pipeline,
-                       param_grid=param_grid,
-                       cv=cv,
-                       scoring="accuracy",
+best_model=GridSearchCV(estimator=pipeline, 
+                       param_grid=param_grid, 
+                       cv=cv, 
+                       scoring="accuracy", 
                        verbose=2)
 
 best_model.fit(xtrain,ytrain)
@@ -175,22 +202,9 @@ print(f"test score: {test_score:.3f}")
 
 best_model.best_params_
 
+y_pred=best_model.predict(xtest)
 
-x_train, x_test, y_train, y_test= train_test_split(x,y, test_size=0.35, random_state=42)
-
-rf_classifier = RandomForestClassifier(n_estimators=100, random_state=42)
-
-rf_classifier.fit(x_train,y_train)
-
-y_pred=rf_classifier.predict(x_test)
-
-accuracy=accuracy_score(y_test,y_pred)
-classification_rep = classification_report(y_test, y_pred)
-print(f"accuracy: {accuracy*100:.2f}%")
-print("classification report:")
-print(classification_rep)
-
-
+# Iris Classification with XGBoost
 iris=load_iris()
 x=iris.data
 y=iris.target
@@ -240,27 +254,525 @@ plt.title("XGBoost feature importance - iris dataset",fontsize=14, pad=15)
 plt.tight_layout()
 plt.show()
 
+# Customer Category Prediction with K-Nearest Neighbors
+%matplotlib inline
+warnings.filterwarnings('ignore')
 
-
-
-df=pd.read_excel("ChurnData.xlsx")
+df=pd.read_csv("teleCust1000t.csv") 
 df.head()
 
-target_col='churn'
+df['custcat'].value_counts()
 
-if target_col not in df.columns:
-    target_col=df.columns[-1]
-    print(f"'{target_col}' not found. Using the last column'{target_col}'as.target.")
+correlation_matrix=df.corr()
+plt.figure(figsize=(10,8))
+sns.heatmap(correlation_matrix,annot=True,cmap='coolwarm',fmt='.2f', linewidths=0.5)
 
-#handle missing values 
-df=df.dropna()
+correlation_values=abs(df.corr()['custcat']).drop('custcat').sort_values(ascending=False)
+correlation_values
 
-le=LabelEncoder()
-for col in df.select_dtypes(include=['object']).columns:
-    df[col]=le.fit_transform(df[col])
+x=df.drop('custcat',axis=1)
+y=df['custcat']
 
-X=df.drop(columns=[target_col])
-y=df[target_col]
+x_norm=StandardScaler().fit_transform(x)
 
-X_train, X_test, y_train, y_test=train_test_split(X,y, test_size=0.2, random_state=42, stratify=y)
+x_train, x_test, y_train, y_test=train_test_split(x_norm, y, test_size=0.2, random_state=42)
 
+k=4
+knn_classifier=KNeighborsClassifier(n_neighbors=k)
+knn_model=knn_classifier.fit(x_train,y_train)
+
+yhat=knn_model.predict(x_test)
+
+print("test set accuracy:", accuracy_score(y_test,yhat))
+
+ks=10
+acc=np.zeros((ks))
+std_acc=np.zeros((ks))
+for n in range(1,ks+1):
+    #train model and prredict
+    knn_model_n=KNeighborsClassifier(n_neighbors=n).fit(x_train,y_train)
+    y_hat=knn_model_n.predict(x_test)
+    acc[n-1]=accuracy_score(y_test,y_hat)
+    std_acc[n-1]=np.std(y_hat==y_test)/np.sqrt(y_hat.shape[0])
+
+plt.plot(range(1,ks+1),acc,'g')
+plt.fill_between(range(1,ks+1),acc-1*std_acc,acc+1*std_acc, alpha=0.10)
+plt.legend('accuracy value',"standard deviation")
+plt.ylabel('model accuracy') 
+plt.xlabel('number of neighbors (k)') 
+plt.tight_layout()
+plt.show()
+
+print("the best accuracy was with", acc.max(),"with k=",acc.argmax()+1)
+
+# Fuel Consumption Dataset Exploration
+fuel=pd.read_csv("FuelConsumptionCo2.csv")
+fuel.head()
+
+# Iris Clustering with K-Means
+iris=load_iris()
+x=iris.data
+
+wcss=[] # within cluster sum of square
+for i in range(1,11):
+    kmeans=KMeans(n_clusters=i, init="k-means++", random_state=42)
+    kmeans.fit(x)
+    wcss.append(kmeans.inertia_)
+
+plt.figure(figsize=(6,4))
+plt.plot(range(1,11),wcss,marker="o",linestyle="--")
+plt.title("Elbow Method")
+plt.xlabel("Number of cluster")
+plt.ylabel("WCSS")
+plt.show()
+
+kmeans=KMeans(n_clusters=4, init="k-means++", random_state=42)
+y_means=kmeans.fit_predict(x)
+
+print("cluster centres: \n", kmeans.cluster_centers_)
+
+# Credit Card Fraud Detection with Decision Tree and SVM
+%matplotlib inline
+warnings.filterwarnings('ignore') 
+
+raw_data=pd.read_csv("creditcard(in).csv") 
+raw_data.head()
+
+labels= raw_data.Class.unique()
+
+size=raw_data.Class.value_counts().values
+
+fig,ax=plt.subplots()
+ax.pie(size, labels=labels, autopct='%1.3f%%')
+ax.set_title('Target variable Value count')
+plt.show()
+
+correlation_values=raw_data.corr()['Class'].drop('Class')
+correlation_values.plot(kind='barh', figsize=(10,6))
+
+raw_data.iloc[:,1:30]= StandardScaler().fit_transform(raw_data.iloc[:, 1:30])
+data_matrix=raw_data.values
+
+x=data_matrix[:, 1:30]
+y=data_matrix[:, 30]
+x=normalize(x, norm='l1')
+
+x_train, x_test, y_train, y_test=train_test_split(x, y, test_size=0.3, random_state=42)
+
+w_train=compute_sample_weight('balanced',y_train)
+
+dt=DecisionTreeClassifier(max_depth=4, random_state=35)
+dt.fit(x_train,y_train, sample_weight=w_train)
+
+svm=LinearSVC(class_weight='balanced',random_state=31, loss='hinge',fit_intercept=False)
+svm.fit(x_train,y_train)
+
+y_pred_dt=dt.predict_proba(x_test)[:,1]
+
+roc_auc_dt=roc_auc_score(y_test,y_pred_dt)
+print('Decision tree roc-auc score:{0:.3f}'.format(roc_auc_dt))
+
+y_pred_svm=svm.decision_function(x_test)
+
+roc_auc_svm=roc_auc_score(y_test,y_pred_svm)
+print('SVM roc-auc score:{0:.3f}'.format(roc_auc_svm))
+
+# Decision Tree Classification
+%matplotlib inline
+
+warnings.filterwarnings('ignore')
+
+iris=datasets.load_iris()
+x=iris.data
+y=iris.target
+
+x_train, x_test, y_train, y_test=train_test_split(x, y, test_size=0.3, random_state=42)
+
+tree=DecisionTreeClassifier(criterion="gini", max_depth=8)
+tree.fit(x_train,y_train)
+
+clf=DecisionTreeClassifier(random_state=42)
+clf.fit(x_train,y_train)
+tree_prediction=tree.predict(x_test)
+print("decision tree's Accuracy:", metrics.accuracy_score(y_test,tree_prediction))
+
+plot_tree(tree)
+plt.show()
+
+# Drug Classification with Decision Tree
+%matplotlib inline
+
+warnings.filterwarnings('ignore')
+
+my_data=pd.read_csv("drug200.csv")
+my_data
+
+label_encoder=LabelEncoder()
+my_data["Sex"]=label_encoder.fit_transform(my_data["Sex"])
+my_data["BP"]=label_encoder.fit_transform(my_data["BP"])
+my_data["Cholesterol"]=label_encoder.fit_transform(my_data["Cholesterol"])
+
+my_data
+
+custom_map={"drugA":0,"drugB":1,"drugC":2,"drugX":3,"drugY":4}
+my_data["Drug_num"]=my_data['Drug'].map(custom_map)
+my_data
+
+my_data.drop(["Drug"], axis=1).corr()["Drug_num"]
+
+category_counts=my_data['Drug'].value_counts()
+plt.bar(category_counts.index, category_counts.values, color="blue")
+plt.xlabel("drug")
+plt.ylabel("count")
+plt.title("category distribution")
+plt.xticks(rotation=45)
+plt.show()
+
+my_data['Drug'].value_counts()
+
+y=my_data["Drug"]
+x=my_data.drop(["Drug","Drug_num"], axis=1)
+
+x_train, x_test, y_train, y_test=train_test_split(x, y, test_size=0.3, random_state=32)
+
+drugtree=DecisionTreeClassifier(criterion="entropy", max_depth=4)
+
+drugtree.fit(x_train,y_train)
+
+tree_prediction=drugtree.predict(x_test)
+print("decision tree's Accuracy:", metrics.accuracy_score(y_test,tree_prediction))
+
+plot_tree(drugtree)
+plt.show()
+
+# Taxi Tip Amount Prediction with Decision Tree Regression
+%matplotlib inline
+warnings.filterwarnings('ignore')
+
+raw_data=pd.read_csv("yellow_tripdata.csv")
+raw_data
+
+correlation_value=raw_data.corr()['tip_amount'].drop('tip_amount')
+correlation_value.plot(kind='barh', figsize=(10,6))
+
+correlation_value=raw_data.corr()['tip_amount']
+correlation_value.plot(kind='barh', figsize=(10,6))
+
+y= raw_data[['tip_amount']].values.astype('float32')
+proc_data=raw_data.drop(['tip_amount'], axis=1)
+x=proc_data.values
+x=normalize(x,axis=1,norm='l1',copy=False)
+
+x_train, x_test, y_train, y_test=train_test_split(x, y, test_size=0.3, random_state=42)
+
+dt_reg=DecisionTreeRegressor(criterion="squared_error",
+                             max_depth=8,
+                             random_state=35)
+
+dt_reg.fit(x_train,y_train)
+
+y_pred=dt_reg.predict(x_test)
+
+mse_score=mean_squared_error(y_test,y_pred)
+print('mse score: {0:.3f}'.format(mse_score))
+
+r2_score=dt_reg.score(x_test,y_test)
+print('r^2 score: {0:.3f}'.format(r2_score))
+
+# Obesity Level Prediction with One-vs-All and One-vs-One
+warnings.filterwarnings('ignore')
+
+data=pd.read_csv("Obesity_level_prediction_dataset.csv")
+data.head()
+
+sns.countplot(y='NObeyesdad', data=data)
+plt.title("distribution of obesity level")
+plt.show()
+
+#standardizing continuous numerical features
+continuous_columns=data.select_dtypes(include=["float64"]).columns.tolist()
+scalar=StandardScaler()
+scaled_features=scalar.fit_transform(data[continuous_columns])
+
+# converting it to a dataframe
+scaled_df=pd.DataFrame(scaled_features,columns=scalar.get_feature_names_out(continuous_columns))
+
+# adding it to the original data
+scaled_data=pd.concat([data.drop(columns=continuous_columns), scaled_df], axis=1)
+
+categorical_columns=scaled_data.select_dtypes(include=["object"]).columns.tolist()
+categorical_columns.remove("NObeyesdad")
+
+encoder=OneHotEncoder(sparse_output=False,drop="first")
+encoded_features=encoder.fit_transform(scaled_data[categorical_columns])
+
+encoded_df=pd.DataFrame(encoded_features,columns=encoder.get_feature_names_out(categorical_columns))
+
+prepped_data=pd.concat([scaled_data.drop(columns=categorical_columns), encoded_df], axis=1)
+
+prepped_data["NObeyesdad"]= prepped_data["NObeyesdad"].astype("category").cat.codes
+prepped_data.head()
+
+x=prepped_data.drop('NObeyesdad', axis=1)
+y=prepped_data["NObeyesdad"]
+
+x_train, x_test, y_train, y_test=train_test_split(x, y, test_size=0.2, random_state=42, stratify=y)
+
+model_ova=LogisticRegression(multi_class="ovr", max_iter=1000)
+model_ova.fit(x_train,y_train)
+
+# prediction
+y_pred_ova=model_ova.predict(x_test)
+
+# evaluation metric for ooa
+print("one vs all (OvA) Strategy")
+print(f"Acuracy: {np.round(100*accuracy_score(y_test,y_pred_ova),2)}%")
+
+model_ovo=OneVsOneClassifier(LogisticRegression(max_iter=1000))
+model_ovo.fit(x_train,y_train)
+
+# prediction
+y_pred_ovo=model_ovo.predict(x_test)
+
+# evaluation metric for ovo
+print("one vs one (OvO) Strategy")
+print(f"Acuracy: {np.round(100*accuracy_score(y_test,y_pred_ovo),2)}%")
+
+x_train, x_test, y_train, y_test=train_test_split(x, y, test_size=0.1, random_state=42, stratify=y)
+
+#ova
+model_ova=LogisticRegression(multi_class="ovr", max_iter=1000)
+model_ova.fit(x_train,y_train)
+# prediction
+y_pred_ova=model_ova.predict(x_test)
+# evaluation metric for ooa
+print("one vs all (OvA) Strategy")
+print(f"Acuracy: {np.round(100*accuracy_score(y_test,y_pred_ova),2)}%")
+
+#ovo
+model_ovo=OneVsOneClassifier(LogisticRegression(max_iter=1000))
+model_ovo.fit(x_train,y_train)
+# prediction
+y_pred_ovo=model_ovo.predict(x_test)
+# evaluation metric for ovo
+print("one vs one (OvO) Strategy")
+print(f"Acuracy: {np.round(100*accuracy_score(y_test,y_pred_ovo),2)}%")
+
+x_train, x_test, y_train, y_test=train_test_split(x, y, test_size=0.3, random_state=45, stratify=y)
+
+#ova
+model_ova=LogisticRegression(multi_class="ovr", max_iter=1000)
+model_ova.fit(x_train,y_train)
+# prediction
+y_pred_ova=model_ova.predict(x_test)
+# evaluation metric for ooa
+print("one vs all (OvA) Strategy")
+print(f"Acuracy: {np.round(100*accuracy_score(y_test,y_pred_ova),2)}%")
+
+#ovo
+model_ovo=OneVsOneClassifier(LogisticRegression(max_iter=1000))
+model_ovo.fit(x_train,y_train)
+# prediction
+y_pred_ovo=model_ovo.predict(x_test)
+# evaluation metric for ovo
+print("one vs one (OvO) Strategy")
+print(f"Acuracy: {np.round(100*accuracy_score(y_test,y_pred_ovo),2)}%")
+
+# Iris Classification with Support Vector Machine
+iris=datasets.load_iris() 
+x=iris.data
+y=iris.target 
+x_train,x_test,y_train,y_test=train_test_split(x,y,test_size=0.2, random_state=42, stratify=y) 
+
+scalar=StandardScaler()
+x_train_scaled=scalar.fit_transform(x_train)
+x_test_scaled=scalar.fit_transform(x_test)
+
+evaluation_model=SVC(kernel="rbf",C=1.0, random_state=42)
+evaluation_model.fit(x_train_scaled, y_train)
+
+y_pred=evaluation_model.predict(x_test_scaled)
+accuracy=accuracy_score(y_test, y_pred)
+
+print("=== SVM model evaluation report ===")
+print(f"overall model accuracy: {accuracy*100:.2f}%\n")
+print(classification_report(y_test,y_pred, target_names=iris.target_names))
+print("===================================")
+
+print("generating decision boundry plot..... close the plot windoww to finish script")
+# to plot 2d space we train a separate vizualizer model using only sepal length and width
+x_visual=iris.data[:,:2]
+scalar_visual=StandardScaler()
+x_visualise_scale=scalar_visual.fit_transform(x_visual)
+
+visual_model=SVC(kernel="rbf",C=1.0,gamma="scale", random_state=42)
+visual_model.fit(x_visualise_scale, y)
+
+# define grid mesh boundry
+xmin, xmax= x_visualise_scale[:,0].min()-0.5, x_visualise_scale[:,0].max()+0.5
+ymin, ymax= x_visualise_scale[:,1].min()-0.5, x_visualise_scale[:,1].max()+0.5
+xx,yy=np.meshgrid(np.arange(xmin,xmax,0.02),
+                 np.arange(ymin, ymax,0.02))
+
+# precdict s=across the mesh grid
+z= visual_model.predict(np.c_[xx.ravel(), yy.ravel()])
+z=z.reshape(xx.shape)
+
+# create the graph
+plt.figure(figsize=(8,6))
+plt.contourf(xx,yy,z,alpha=0.3, cmap=plt.cm.coolwarm)
+
+#overlay the actual data points 
+scatter=plt.scatter(x_visualise_scale[:,0], x_visualise_scale[:,1],c=y,
+                    cmap=plt.cm.coolwarm, edgecolors='k', s=40)
+
+#formatting
+plt.xlabel("Sepal Length (standardized)")
+plt.ylabel("Sepal Width(Standarized)")
+plt.title("SVM Decision Boundaries On Iris Dataset (Sepal features)")
+plt.legend(handles=scatter.legend_elements(), labels=list(iris.target_names))
+plt.grid(True, linestyle='--', alpha=0.5)
+plt.show()
+
+# Customer Churn Prediction with Logistic Regression
+%matplotlib inline
+warnings.filterwarnings('ignore')
+
+df=pd.read_excel("ChurnData.xlsx")
+df
+
+churn_df=df[['tenure', 'age', 'address', 'income', 'ed', 'employ', 'equip','churn']]
+churn_df['churn']=df['churn'].astype("int")
+churn_df
+
+x=np.asarray(churn_df[['tenure', 'age', 'address', 'income', 'ed', 'employ', 'equip']])
+x[0:5] #to print first 5 values
+
+y=np.asarray(churn_df["churn"])
+y[0:5]
+
+x_norm=StandardScaler().fit(x).transform(x)
+x_norm[0:5]
+
+x_train, x_test, y_train, y_test=train_test_split(x_norm, y, test_size=0.2, random_state=4)
+
+LR= LogisticRegression().fit(x_train,y_train)
+
+yhat=LR.predict(x_test)
+yhat[:10]
+
+yhat_prob=LR.predict_proba(x_test)
+yhat_prob[:10]
+
+coefficients=pd.Series(LR.coef_[0], index=churn_df.columns[:-1])
+coefficients.sort_values().plot(kind="barh")
+plt.title("feature coefficients in logistic regression churn model")
+plt.xlabel("coefficient value")
+plt.show()
+
+log_loss(y_test,yhat_prob)
+
+# Fuel Consumption Data Exploration and Linear Regression
+df=pd.read_csv("FuelConsumptionCo2.csv")
+
+df=df.drop(['MODELYEAR', 'MAKE', 'MODEL', 'VEHICLECLASS','TRANSMISSION', 'FUELTYPE'], axis =1)
+
+df.corr()
+
+df=df.drop(['CYLINDERS', 'FUELCONSUMPTION_CITY','FUELCONSUMPTION_HWY'], axis =1)
+
+df.columns
+
+axes=pd.plotting.scatter_matrix(df,alpha=0.2)
+# need to rotate the axis so we can read them
+for ax in axes.flatten():
+    ax.xaxis.label.set_rotation(90)
+    ax.yaxis.label.set_rotation(0)
+    ax.yaxis.label.set_ha("right")
+plt.tight_layout()
+plt.gcf().subplots_adjust(wspace=0,hspace=0)
+plt.show()
+
+x=df.iloc[:,[0,1,2]].to_numpy()
+y=df.iloc[:,[3]].to_numpy()
+
+std_scaler= preprocessing.StandardScaler()
+x_std=std_scaler.fit_transform(x)
+
+pd.DataFrame(x_std).describe().round(2)
+
+x_train,x_test,y_train,y_test= train_test_split(x_std,y,test_size=0.2,random_state=42)
+
+# create a model object
+regressor=linear_model.LinearRegression()
+
+# train the model with training data
+regressor.fit(x_train,y_train)
+
+# print coefficient
+coef_=regressor.coef_
+intercept_=regressor.intercept_
+
+print("coeficient:",coef_)
+print("intercept:",intercept_)
+
+# CO₂ Emissions Prediction with Simple Linear Regression
+%matplotlib inline
+
+df= pd.read_csv("FuelConsumptionCo2.csv")
+df.head()
+
+cdf=df[['ENGINESIZE', 'CYLINDERS','FUELCONSUMPTION_COMB','CO2EMISSIONS']]
+cdf.sample(9)
+
+viz=cdf
+viz.hist()
+plt.show()
+
+plt.scatter(cdf.FUELCONSUMPTION_COMB, cdf.CO2EMISSIONS, color="blue")
+plt.xlabel("Fuelconsumption_Comb")
+plt.ylabel("Emission")
+plt.show()
+
+plt.scatter(cdf.ENGINESIZE, cdf.CO2EMISSIONS, color="blue")
+plt.xlabel("Engine size")
+plt.ylabel("Emission")
+#plt.xlim(0,27)#to condense the data
+plt.show()
+
+plt.scatter(cdf.CYLINDERS, cdf.CO2EMISSIONS, color="blue")
+plt.xlabel("Fuelconsumption_Comb")
+plt.ylabel("Emission")
+plt.show()
+
+x= cdf.ENGINESIZE.to_numpy()
+y= cdf.CO2EMISSIONS.to_numpy()
+
+x_train,x_test, y_train, y_test = train_test_split(x,y,test_size=0.2, random_state=42)
+
+type(x_train), np.shape(x_train)
+
+# create a model object
+regressor= linear_model.LinearRegression()
+
+#train the model on training data
+#x_train is a 1D array but sklear expect a 2D array
+regressor.fit(x_train.reshape(-1,1),y_train)
+
+print('coefficient:',regressor.coef_[0])
+print('Intercept:',regressor.intercept_)
+
+# use the predict method to make test prediction 
+y_pred= regressor.predict(x_test.reshape(-1,1))
+
+# evaluation
+print ("mean absolute error:%.2f" % mean_absolute_error(y_test,y_pred))
+print ("mean squared error:%.2f" % mean_squared_error(y_test,y_pred))
+print ("root mean squared error:%.2f" % np.sqrt(mean_squared_error(y_test,y_pred)))
+print ("r2-score:%.2f" % r2_score(y_test,y_pred))
+
+plt.scatter(x_train, y_train, color="red")
+plt.plot(x_train,regressor.coef_*x_train+regressor.intercept_,"-b")
+plt.xlabel("Engine size")
+plt.ylabel("CO2 Emission")
+plt.show()
