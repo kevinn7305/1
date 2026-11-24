@@ -1,342 +1,324 @@
-# ============================================================
-# 1. INSTALL PACKAGES (RUN ONCE IN CONSOLE)
-# ============================================================
-
-packages <- c(
-  "pdfetch", "quantmod", "readxl", "forecast",
-  "ggplot2", "dplyr", "tseries", "zoo", "tidyr",
-  "moments", "FinTS", "urca", "vars", "tsDyn",
-  "stargazer", "rugarch", "rmgarch", "BEKKs",
-  "rmarkdown", "knitr", "tinytex"
-)
-
-install.packages(packages, dependencies = TRUE)
-
-
-# ============================================================
-# 2. LOAD ALL LIBRARIES
-# ============================================================
-
-library(pdfetch)
-library(quantmod)
-library(readxl)
-library(forecast)
-library(ggplot2)
-library(dplyr)
-library(tseries)
-library(zoo)
-library(tidyr)
-library(moments)
-library(FinTS)
-library(urca)
-library(vars)
-library(tsDyn)
-library(stargazer)
-library(rugarch)
-library(rmgarch)
-library(BEKKs)
-library(rmarkdown)
-library(knitr)
-library(tinytex)
-
-
-# ============================================================
-# 3. IMPORT DATA
-# ============================================================
-
-data <- read.csv("data.csv")
-
-# Excel import
-# data <- read_excel("data.xlsx")
-
-# Download stock data
-# getSymbols("AAPL", src = "yahoo")
-
-
-# ============================================================
-# 4. DATA INSPECTION AND CLEANING
-# ============================================================
-
-head(data)
-tail(data)
-str(data)
-summary(data)
-dim(data)
-
-colSums(is.na(data))
-data <- na.omit(data)
-
-
-# ============================================================
-# 5. DESCRIPTIVE STATISTICS
-# ============================================================
-
-mean(data)
-sd(data)
-var(data)
-skewness(data)
-kurtosis(data)
-
-stats <- data.frame(
-  Mean = mean(data),
-  SD = sd(data),
-  Variance = var(data),
-  Skewness = skewness(data),
-  Kurtosis = kurtosis(data)
-)
-
-stats
-
-
-# ============================================================
-# 6. VISUALIZATION
-# ============================================================
-
-plot(data, type = "l")
-
-# ggplot
-# ggplot(data, aes(x = Date, y = Price)) +
-#   geom_line() +
-#   theme_minimal()
-
-
-# ============================================================
-# 7. TIME SERIES CONVERSION
-# ============================================================
-
-Y <- ts(data)
-YY <- ts(data)
-
-
-# ============================================================
-# 8. LOG TRANSFORMATION AND RETURNS
-# ============================================================
-
-log_data <- log(data)
-
-returns <- diff(log(data))
-
-percentage_returns <- diff(data) / lag(data) * 100
-
-
-# ============================================================
-# 9. ADF STATIONARITY TEST
-# ============================================================
-
-adf.test(data)
-
-adf <- ur.df(data, type = "drift", selectlags = "AIC")
-summary(adf)
-
-# Trend version
-adf_trend <- ur.df(data, type = "trend", selectlags = "AIC")
-summary(adf_trend)
-
-
-# ============================================================
-# 10. DIFFERENCING
-# ============================================================
-
-d_data <- diff(data)
-
-d2_data <- diff(data, differences = 2)
-
-adf.test(d_data)
-
-
-# ============================================================
-# 11. ARIMA MODEL
-# ============================================================
-
-model <- auto.arima(data)
-
-summary(model)
-
-# Manual ARIMA
-model_manual <- Arima(data, order = c(1,1,1))
-
-summary(model_manual)
-
-# Residuals
-residuals(model)
-
-# Residual diagnostics
-checkresiduals(model)
-
-
-# ============================================================
-# 12. ARIMA FORECAST
-# ============================================================
-
-fc <- forecast(model, h = 10)
-
-fc
-
-plot(fc)
-
-
-# ============================================================
-# 13. ACF AND PACF
-# ============================================================
-
-acf(data)
-
-pacf(data)
-
-
-# ============================================================
-# 14. ARCH EFFECT TEST
-# ============================================================
-
-ArchTest(data, lags = 12)
-
-
-# ============================================================
-# 15. GARCH MODEL
-# ============================================================
-
-spec <- ugarchspec(
-  variance.model = list(model = "sGARCH", garchOrder = c(1,1)),
-  mean.model = list(armaOrder = c(0,0))
-)
-
-fit <- ugarchfit(spec = spec, data = data)
-
-fit
-
-# Forecast GARCH
-fc_garch <- ugarchforecast(fit, n.ahead = 10)
-
-plot(fc_garch)
-
-
-# ============================================================
-# 16. VAR LAG SELECTION
-# ============================================================
-
-lag <- VARselect(YY, lag.max = 10, type = "const")
-
-lag$selection
-
-# Example: Select lag using SC
-p <- lag$selection["SC(n)"]
-
-
-# ============================================================
-# 17. VAR MODEL
-# ============================================================
-
-model_var <- VAR(YY, p = as.numeric(p), type = "const")
-
-summary(model_var)
-
-
-# ============================================================
-# 18. GRANGER CAUSALITY
-# ============================================================
-
-causality(model_var, cause = colnames(YY)[1])
-
-causality(model_var, cause = colnames(YY)[2])
-
-
-# ============================================================
-# 19. IRF (IMPULSE RESPONSE FUNCTION)
-# ============================================================
-
-irf_result <- irf(
-  model_var,
-  impulse = colnames(YY)[1],
-  response = colnames(YY)[2],
-  n.ahead = 10,
-  boot = TRUE
-)
-
-plot(irf_result)
-
-
-# ============================================================
-# 20. FEVD (FORECAST ERROR VARIANCE DECOMPOSITION)
-# ============================================================
-
-fevd_result <- fevd(model_var, n.ahead = 10)
-
-plot(fevd_result)
-
-
-# ============================================================
-# 21. COINTEGRATION - JOHANSEN TEST
-# ============================================================
-
-jo <- ca.jo(YY, type = "trace", ecdet = "const", K = 2)
-
-summary(jo)
-
-
-# ============================================================
-# 22. VECM MODEL
-# ============================================================
-
-vec <- VECM(
-  YY,
-  lag = 1,
-  r = 1,
-  estim = "ML"
-)
-
-summary(vec)
-
-
-# ============================================================
-# 23. VECM IRF
-# ============================================================
-
-irf_vec <- irf(
-  vec,
-  n.ahead = 10,
-  boot = TRUE
-)
-
-plot(irf_vec)
-
-
-# ============================================================
-# 24. MULTIVARIATE GARCH
-# ============================================================
-
-# Create univariate specifications
-spec1 <- ugarchspec(
-  variance.model = list(model = "sGARCH", garchOrder = c(1,1)),
-  mean.model = list(armaOrder = c(0,0))
-)
-
-spec_multi <- multispec(replicate(2, spec1))
-
-# DCC specification
-dcc_spec <- dccspec(
-  uspec = spec_multi,
-  dccOrder = c(1,1),
-  distribution = "mvnorm"
-)
-
-dcc_fit <- dccfit(dcc_spec, data = YY)
-
-dcc_fit
-
-
-# ============================================================
-# 25. BEKK MODEL
-# ============================================================
-
-bekk_fit <- BEKKs::bekk_fit(
-  data = YY
-)
-
-bekk_fit
-
-
-# ============================================================
-# 26. TINYTeX INSTALLATION (RUN SEPARATELY IN CONSOLE)
-# ============================================================
-
-# tinytex::install_tinytex()
+set +H
+cd ~
+
+cat > word.txt <<'EOF'
+Hello world
+Hello Hadoop
+EOF
+
+cat > mapper.py <<'EOF'
+#!/usr/bin/env python
+import sys
+for line in sys.stdin:
+    words = line.strip().split()
+    for word in words:
+        print("%s\t%s" % (word, 1))
+EOF
+
+cat > reducer.py <<'EOF'
+#!/usr/bin/env python
+import sys
+counts = {}
+for line in sys.stdin:
+    word, count = line.strip().split('\t')
+    counts[word] = counts.get(word, 0) + int(count)
+for word, count in counts.items():
+    print("%s\t%s" % (word, count))
+EOF
+
+cat > titanic.txt <<'EOF'
+Owen,male,22
+Hannah,female,38
+Laina,female,26
+Lily,female,35
+Allen,male,35
+Jack,male,28
+Emma,female,31
+Thomas,male,42
+Sophia,female,24
+William,male,30
+EOF
+
+cat > mapper2.py <<'EOF'
+#!/usr/bin/env python
+import sys
+import csv
+reader = csv.reader(sys.stdin)
+for line in reader:
+    if len(line) > 2:
+        print('%s,%s' % (line[1], line[2]))
+EOF
+
+cat > reducer2.py <<'EOF'
+#!/usr/bin/env python
+import sys
+data = {}
+for line in sys.stdin:
+    gender, age = line.strip().split(',')
+    if gender not in data:
+        data[gender] = [0, 0]
+    data[gender][0] += float(age)
+    data[gender][1] += 1
+for gender, values in data.items():
+    average = values[0] / values[1]
+    print("%s = %s" % (gender, average))
+EOF
+
+cat > input.txt <<'EOF'
+a,0,0,1
+a,0,1,2
+a,1,0,3
+a,1,1,4
+b,0,0,5
+b,0,1,6
+b,1,0,7
+b,1,1,8
+EOF
+
+cat > mapper3.py <<'EOF'
+#!/usr/bin/env python
+import sys
+for line in sys.stdin:
+    p = line.strip().split(',')
+    if len(p) == 4:
+        print("%s\t%s" % (p[0].lower(), ','.join(p)))
+EOF
+
+cat > reducer3.py <<'EOF'
+#!/usr/bin/env python
+import sys
+a, b = {}, {}
+for line in sys.stdin:
+    try:
+        tag, val = line.strip().split('\t')
+        p = val.split(',')
+        i, j, v = int(p[1]), int(p[2]), int(p[3])
+        if tag == 'a':
+            a[i, j] = v
+        elif tag == 'b':
+            b[i, j] = v
+    except:
+        continue
+for i in range(2):
+    for j in range(2):
+        s = sum(a.get((i, k), 0) * b.get((k, j), 0) for k in range(2))
+        print("(%d,%d)\t%d" % (i, j, s))
+EOF
+
+cat > word1.txt <<'EOF'
+1,pooja,R,20
+2,sam,Thomas,25
+3,priya,S,20
+4,pavan,Rao,20
+EOF
+
+cat > lab4.pig <<'EOF'
+A = LOAD 'word1.txt' USING PigStorage(',') AS (id:int, first_name:chararray, last_name:chararray, age:int);
+B = FOREACH A GENERATE UPPER(SUBSTRING(first_name, 0, 1)) AS first_letter;
+C = GROUP B BY first_letter;
+D = FOREACH C GENERATE group AS first_letter, COUNT(B) AS count;
+E = ORDER D BY count DESC;
+F = LIMIT E 1;
+DUMP F;
+EOF
+
+cat > rdd.py <<'EOF'
+from pyspark import SparkContext
+from pyspark.sql import SQLContext
+sc = SparkContext()
+sql = SQLContext(sc)
+rdd = sc.parallelize([
+    (1, "AIML", 69),
+    (2, "CS", 72),
+    (3, "ECE", 99)
+])
+df = sql.createDataFrame(rdd, ["No", "Dept", "No_of_students"])
+df.show()
+sc.stop()
+EOF
+
+cat > retail.py <<'EOF'
+from pyspark import SparkContext
+from pyspark.sql import SQLContext
+sc = SparkContext()
+sql = SQLContext(sc)
+data = [
+    ("Laptop", "Electronics", 50000),
+    ("Phone", "Electronics", 30000),
+    ("Rice", "Grocery", 5000),
+    ("Oil", "Grocery", 2000),
+    ("Chair", "Furniture", 4000),
+    ("Table", "Furniture", 8000)
+]
+columns = ["Product", "Category", "Sales"]
+df = sql.createDataFrame(data, columns)
+print("1. All Products:")
+df.show()
+print("2. Products with sales above 5000:")
+df.filter(df.Sales > 5000).show()
+print("3. Total Sales by Category:")
+df.groupBy("Category").sum("Sales").show()
+print("4. Highest-Selling Product:")
+df.orderBy(df.Sales.desc()).limit(1).show()
+print("5. Products sorted by Sales, highest to lowest:")
+df.orderBy(df.Sales.desc()).show()
+sc.stop()
+EOF
+
+cat > products.txt <<'EOF'
+Laptop,Electronics,50000
+Phone,Electronics,30000
+Rice,Grocery,5000
+Oil,Grocery,2000
+Chair,Furniture,4000
+Table,Furniture,8000
+EOF
+
+cat > lab8.pig <<'EOF'
+products = LOAD 'products.txt' USING PigStorage(',') AS (product:chararray, category:chararray, sales:int);
+DUMP products;
+grouped = GROUP products BY category;
+DUMP grouped;
+result = FOREACH grouped GENERATE group, COUNT(products);
+DUMP result;
+electronics = FILTER products BY category == 'Electronics';
+DUMP electronics;
+EOF
+
+cat > students.py <<'EOF'
+from pyspark import SparkContext
+from pyspark.sql import SQLContext
+sc = SparkContext()
+sql = SQLContext(sc)
+data = [
+    (101, "Aarav", 20, "AIML"),
+    (102, "Priya", 19, "CS"),
+    (103, "Rahul", 21, "ECE"),
+    (104, "Sneha", 18, "AIML"),
+    (105, "Karan", 22, "CS"),
+    (106, "Ananya", 20, "ECE"),
+    (107, "Vikram", 23, "AIML"),
+    (108, "Diya", 25, "CS")
+]
+columns = ["Roll_No", "Name", "Age", "Dept"]
+df = sql.createDataFrame(data, columns)
+df.show()
+df.rdd.saveAsTextFile("/user/cloudera/output_students")
+sc.stop()
+EOF
+
+cat > run1.sh <<'EOF'
+cd ~
+echo "===== Q1 : WORD COUNT ====="
+echo "--- Mapper output ---"
+cat word.txt | python mapper.py
+echo "--- Local MapReduce result ---"
+cat word.txt | python mapper.py | sort | python reducer.py
+hdfs dfs -mkdir -p prg1
+hdfs dfs -put -f /home/cloudera/word.txt /user/cloudera/prg1
+hdfs dfs -ls /user/cloudera/prg1
+hdfs dfs -rm -r -f /user/cloudera/prg1/output
+chmod 777 mapper.py reducer.py
+hadoop jar /usr/lib/hadoop-mapreduce/hadoop-streaming.jar -input /user/cloudera/prg1/word.txt -output /user/cloudera/prg1/output -mapper /home/cloudera/mapper.py -reducer /home/cloudera/reducer.py
+echo "===== HADOOP OUTPUT ====="
+hdfs dfs -cat /user/cloudera/prg1/output/part-00000
+EOF
+
+cat > run2.sh <<'EOF'
+cd ~
+echo "===== Q2 : TITANIC AVERAGE AGE ====="
+echo "--- Mapper output ---"
+cat titanic.txt | python mapper2.py
+echo "--- Local MapReduce result ---"
+cat titanic.txt | python mapper2.py | sort | python reducer2.py
+hdfs dfs -mkdir -p prg2
+hdfs dfs -put -f /home/cloudera/titanic.txt /user/cloudera/prg2
+hdfs dfs -ls /user/cloudera/prg2
+hdfs dfs -rm -r -f /user/cloudera/prg2/output
+chmod 777 mapper2.py reducer2.py
+hadoop jar /usr/lib/hadoop-mapreduce/hadoop-streaming.jar -input /user/cloudera/prg2/titanic.txt -output /user/cloudera/prg2/output -mapper /home/cloudera/mapper2.py -reducer /home/cloudera/reducer2.py
+echo "===== HADOOP OUTPUT ====="
+hdfs dfs -cat /user/cloudera/prg2/output/part-00000
+EOF
+
+cat > run3.sh <<'EOF'
+cd ~
+echo "===== Q3 : MATRIX MULTIPLICATION ====="
+echo "--- Mapper output ---"
+cat input.txt | python mapper3.py
+echo "--- Local MapReduce result ---"
+cat input.txt | python mapper3.py | sort | python reducer3.py
+hdfs dfs -mkdir -p prg3
+hdfs dfs -put -f /home/cloudera/input.txt /user/cloudera/prg3
+hdfs dfs -ls /user/cloudera/prg3
+hdfs dfs -rm -r -f /user/cloudera/prg3/output
+chmod 777 mapper3.py reducer3.py
+hadoop jar /usr/lib/hadoop-mapreduce/hadoop-streaming.jar -input /user/cloudera/prg3/input.txt -output /user/cloudera/prg3/output -mapper /home/cloudera/mapper3.py -reducer /home/cloudera/reducer3.py
+echo "===== HADOOP OUTPUT ====="
+hdfs dfs -cat /user/cloudera/prg3/output/part-00000
+EOF
+
+cat > run4.sh <<'EOF'
+cd ~
+echo "===== Q4 : PIG MOST OCCURRING START LETTER ====="
+cat lab4.pig
+pig -x local lab4.pig
+EOF
+
+cat > run5.sh <<'EOF'
+cd ~
+echo "===== Q5 : SPARK RDD TO DATAFRAME ====="
+spark-submit --master local --conf spark.eventLog.enabled=false rdd.py
+EOF
+
+cat > run6.sh <<'EOF'
+cd ~
+echo "===== Q6 : HDFS FILE MANAGEMENT ====="
+hdfs dfs -rm -r -f /user/cloudera/lab4
+echo "--- 1. Create directory ---"
+hdfs dfs -mkdir lab4
+echo "--- 2. List directory ---"
+hdfs dfs -ls /user/cloudera/lab4
+echo "--- 3. Add file : copy from local to HDFS ---"
+hdfs dfs -put /home/cloudera/titanic.txt /user/cloudera/lab4
+hdfs dfs -ls /user/cloudera/lab4
+echo "--- 4. Retrieve file : view contents ---"
+hdfs dfs -cat /user/cloudera/lab4/titanic.txt
+echo "--- 5. Retrieve file : copy back to local ---"
+rm -f /home/cloudera/titanic_copy.txt
+hdfs dfs -get /user/cloudera/lab4/titanic.txt /home/cloudera/titanic_copy.txt
+ls -l /home/cloudera/titanic_copy.txt
+echo "--- 6. Delete directory ---"
+hdfs dfs -rm -r /user/cloudera/lab4
+hdfs dfs -ls
+EOF
+
+cat > run7.sh <<'EOF'
+cd ~
+echo "===== Q7 : PYSPARK RETAIL SALES ANALYSIS ====="
+spark-submit --master local --conf spark.eventLog.enabled=false retail.py
+EOF
+
+cat > run8.sh <<'EOF'
+cd ~
+echo "===== Q8 : PIG PRODUCT ANALYSIS ====="
+echo "Output order: 1 all records, 2 grouped by category, 3 count per category, 4 Electronics only"
+cat lab8.pig
+pig -x local lab8.pig
+EOF
+
+cat > run9.sh <<'EOF'
+cd ~
+echo "===== Q9 : STUDENT DATAFRAME SAVED IN HDFS ====="
+hdfs dfs -rm -r -f /user/cloudera/output_students
+spark-submit --master local --conf spark.eventLog.enabled=false students.py
+echo "--- hdfs dfs -ls /user/cloudera/output_students ---"
+hdfs dfs -ls /user/cloudera/output_students
+echo "--- hdfs dfs -cat /user/cloudera/output_students ---"
+hdfs dfs -cat '/user/cloudera/output_students/part-*'
+EOF
+
+chmod 777 *.py *.sh
+for f in *.py; do python -m py_compile $f || echo "BROKEN: $f"; done
+for f in run*.sh; do bash -n $f || echo "BROKEN: $f"; done
+echo "ALL DONE - if no BROKEN lines above, run:  bash run1.sh ... bash run9.sh"
