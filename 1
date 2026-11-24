@@ -1,532 +1,384 @@
+cd ~
 set +H
-cd ~
 
-# ==========================================
-# Q1 : WORD COUNT
-# ==========================================
+cat > setup.py <<'PYSETUP'
+from pathlib import Path
 
-cat > word.txt <<'EOF'
-Hello world
+files = {}
+
+# =========================
+# Q1: WORD COUNT
+# =========================
+files["word.txt"] = """Hello world
 Hello Hadoop
-EOF
+"""
 
-cat > mapper.py <<'EOF'
-#!/usr/bin/env python
+files["mapper.py"] = """#!/usr/bin/env python
 import sys
+
 for line in sys.stdin:
-    words = line.strip().split()
-    for word in words:
-        print("%s\t%s" % (word, 1))
-EOF
+    for word in line.strip().split():
+        print(word + "\\t1")
+"""
 
-cat > reducer.py <<'EOF'
-#!/usr/bin/env python
+files["reducer.py"] = """#!/usr/bin/env python
 import sys
+
 counts = {}
+
 for line in sys.stdin:
-    word, count = line.strip().split('\t')
+    word, count = line.strip().split("\\t")
     counts[word] = counts.get(word, 0) + int(count)
-for word, count in counts.items():
-    print("%s\t%s" % (word, count))
-EOF
 
+for word, count in sorted(counts.items()):
+    print(word + "\\t" + str(count))
+"""
 
-# ==========================================
-# Q2 : TITANIC AVERAGE AGE
-# ==========================================
+# =========================
+# Q2: TITANIC GENDER AVG AGE
+# =========================
+files["titanic.txt"] = """female,22
+female,30
+female,40
+male,25
+male,35
+male,34
+"""
 
-cat > titanic.txt <<'EOF'
-Owen,male,22
-Hannah,female,38
-Laina,female,26
-Lily,female,35
-Allen,male,35
-Jack,male,28
-Emma,female,31
-Thomas,male,42
-Sophia,female,24
-William,male,30
-EOF
-
-cat > mapper2.py <<'EOF'
-#!/usr/bin/env python
+files["mapper2.py"] = """#!/usr/bin/env python
 import sys
-import csv
-reader = csv.reader(sys.stdin)
-for line in reader:
-    if len(line) > 2:
-        print('%s,%s' % (line[1], line[2]))
-EOF
 
-cat > reducer2.py <<'EOF'
-#!/usr/bin/env python
+for line in sys.stdin:
+    gender, age = line.strip().split(",")
+    print(gender + "\\t" + age)
+"""
+
+files["reducer2.py"] = """#!/usr/bin/env python
 import sys
+
 data = {}
+
 for line in sys.stdin:
-    gender, age = line.strip().split(',')
-    if gender not in data:
-        data[gender] = [0, 0]
-    data[gender][0] += float(age)
-    data[gender][1] += 1
-for gender, values in data.items():
-    average = values[0] / values[1]
-    print("%s = %s" % (gender, average))
-EOF
+    gender, age = line.strip().split("\\t")
+    data.setdefault(gender, []).append(float(age))
 
+for gender, ages in sorted(data.items()):
+    print(gender + "\\t" + str(round(sum(ages)/len(ages), 2)))
+"""
 
-# ==========================================
-# Q3 : MATRIX MULTIPLICATION
-# ==========================================
+# =========================
+# Q3: MATRIX MULTIPLICATION
+# =========================
+files["input.txt"] = """A,0,0,1
+A,0,1,2
+A,1,0,3
+A,1,1,4
+B,0,0,5
+B,0,1,6
+B,1,0,7
+B,1,1,8
+"""
 
-cat > input.txt <<'EOF'
-a,0,0,1
-a,0,1,2
-a,1,0,3
-a,1,1,4
-b,0,0,5
-b,0,1,6
-b,1,0,7
-b,1,1,8
-EOF
-
-cat > mapper3.py <<'EOF'
-#!/usr/bin/env python
+files["mapper3.py"] = """#!/usr/bin/env python
 import sys
-for line in sys.stdin:
-    p = line.strip().split(',')
-    if len(p) == 4:
-        print("%s\t%s" % (p[0].lower(), ','.join(p)))
-EOF
 
-cat > reducer3.py <<'EOF'
-#!/usr/bin/env python
+for line in sys.stdin:
+    matrix, row, col, value = line.strip().split(",")
+    row, col, value = int(row), int(col), int(value)
+
+    if matrix == "A":
+        for j in range(2):
+            print(str(row) + "," + str(j) + "\\tA," + str(col) + "," + str(value))
+    else:
+        for i in range(2):
+            print(str(i) + "," + str(col) + "\\tB," + str(row) + "," + str(value))
+"""
+
+files["reducer3.py"] = """#!/usr/bin/env python
 import sys
-a, b = {}, {}
+
+data = {}
+
 for line in sys.stdin:
-    try:
-        tag, val = line.strip().split('\t')
-        p = val.split(',')
-        i, j, v = int(p[1]), int(p[2]), int(p[3])
-        if tag == 'a':
-            a[i, j] = v
-        elif tag == 'b':
-            b[i, j] = v
-    except:
-        continue
-for i in range(2):
-    for j in range(2):
-        s = sum(a.get((i, k), 0) * b.get((k, j), 0) for k in range(2))
-        print("(%d,%d)\t%d" % (i, j, s))
-EOF
+    key, value = line.strip().split("\\t")
+    matrix, index, number = value.split(",")
+    data.setdefault(key, {}).setdefault(matrix, []).append((int(index), int(number)))
 
+for key in sorted(data):
+    a = sorted(data[key].get("A", []))
+    b = sorted(data[key].get("B", []))
 
-# ==========================================
-# Q4 : PIG LETTER COUNT
-# ==========================================
+    result = sum(x[1] * y[1] for x, y in zip(a, b))
+    print(key + "\\t" + str(result))
+"""
 
-cat > word1.txt <<'EOF'
-1,pooja,R,20
-2,sam,Thomas,25
-3,priya,S,20
-4,pavan,Rao,20
-EOF
+# =========================
+# Q4: PIG LETTER COUNT
+# =========================
+files["word1.txt"] = """pooja
+sam
+priya
+pavan
+"""
 
-cat > lab4.pig <<'EOF'
-A = LOAD 'word1.txt' USING PigStorage(',') AS (id:int, first_name:chararray, last_name:chararray, age:int);
-B = FOREACH A GENERATE UPPER(SUBSTRING(first_name, 0, 1)) AS first_letter;
-C = GROUP B BY first_letter;
-D = FOREACH C GENERATE group AS first_letter, COUNT(B) AS count;
-E = ORDER D BY count DESC;
-F = LIMIT E 1;
-DUMP F;
-EOF
-
-
-# ==========================================
-# Q5 : SPARK RDD TO DATAFRAME
-# ==========================================
-
-cat > rdd.py <<'EOF'
-from pyspark import SparkContext
-from pyspark.sql import SQLContext
-
-sc = SparkContext()
-sql = SQLContext(sc)
-
-rdd = sc.parallelize([
-    (1, "AIML", 69),
-    (2, "CS", 72),
-    (3, "ECE", 99)
-])
-
-df = sql.createDataFrame(rdd, ["No", "Dept", "No_of_students"])
-df.show()
-
-sc.stop()
-EOF
-
-
-# ==========================================
-# Q6 : LOCAL FILE MANAGEMENT
-# ==========================================
-
-# Executed through run6.sh
-
-
-# ==========================================
-# Q7 : RETAIL SALES ANALYSIS
-# ==========================================
-
-cat > retail.py <<'EOF'
-from pyspark import SparkContext
-from pyspark.sql import SQLContext
-
-sc = SparkContext()
-sql = SQLContext(sc)
-
-data = [
-    ("Laptop", "Electronics", 50000),
-    ("Phone", "Electronics", 30000),
-    ("Rice", "Grocery", 5000),
-    ("Oil", "Grocery", 2000),
-    ("Chair", "Furniture", 4000),
-    ("Table", "Furniture", 8000)
-]
-
-columns = ["Product", "Category", "Sales"]
-df = sql.createDataFrame(data, columns)
-
-print("1. All Products:")
-df.show()
-
-print("2. Products with sales above 5000:")
-df.filter(df.Sales > 5000).show()
-
-print("3. Total Sales by Category:")
-df.groupBy("Category").sum("Sales").show()
-
-print("4. Highest-Selling Product:")
-df.orderBy(df.Sales.desc()).limit(1).show()
-
-print("5. Products sorted by Sales, highest to lowest:")
-df.orderBy(df.Sales.desc()).show()
-
-sc.stop()
-EOF
-
-
-# ==========================================
-# Q8 : PIG PRODUCT ANALYSIS
-# ==========================================
-
-cat > products.txt <<'EOF'
-Laptop,Electronics,50000
-Phone,Electronics,30000
-Rice,Grocery,5000
-Oil,Grocery,2000
-Chair,Furniture,4000
-Table,Furniture,8000
-EOF
-
-cat > lab8.pig <<'EOF'
-products = LOAD 'products.txt' USING PigStorage(',') AS (product:chararray, category:chararray, sales:int);
-DUMP products;
-grouped = GROUP products BY category;
-DUMP grouped;
-result = FOREACH grouped GENERATE group, COUNT(products);
+files["lab4.pig"] = """data = LOAD 'word1.txt' USING PigStorage() AS (word:chararray);
+letters = FOREACH data GENERATE UPPER(SUBSTRING(word,0,1)) AS letter;
+grouped = GROUP letters BY letter;
+result = FOREACH grouped GENERATE group, COUNT(letters);
 DUMP result;
-electronics = FILTER products BY category == 'Electronics';
-DUMP electronics;
-EOF
+"""
 
+# =========================
+# Q5: PYSPARK RDD TO DF
+# =========================
+files["rdd.py"] = """from pyspark.sql import SparkSession
 
-# ==========================================
-# Q9 : STUDENT DATAFRAME
-# ==========================================
+spark = SparkSession.builder.appName("RDDtoDF").master("local").getOrCreate()
+sc = spark.sparkContext
 
-cat > students.py <<'EOF'
-from pyspark import SparkContext
-from pyspark.sql import SQLContext
+data = [("A", 20), ("B", 25), ("C", 30)]
+rdd = sc.parallelize(data)
 
-sc = SparkContext()
-sql = SQLContext(sc)
+df = spark.createDataFrame(rdd, ["Name", "Age"])
+df.show()
+
+spark.stop()
+"""
+
+# =========================
+# Q6: LOCAL FILE MANAGEMENT
+# =========================
+files["run6.sh"] = """#!/bin/bash
+set -e
+cd "$HOME"
+
+mkdir -p localfiles
+cp word.txt localfiles/
+echo "Copied file:"
+cat localfiles/word.txt
+
+rm -f localfiles/word.txt
+echo "File removed"
+"""
+
+# =========================
+# Q7: RETAIL ANALYSIS
+# =========================
+files["retail.py"] = """from pyspark.sql import SparkSession
+from pyspark.sql.functions import sum, avg, count
+
+spark = SparkSession.builder.appName("Retail").master("local").getOrCreate()
 
 data = [
-    (101, "Aarav", 20, "AIML"),
-    (102, "Priya", 19, "CS"),
-    (103, "Rahul", 21, "ECE"),
-    (104, "Sneha", 18, "AIML"),
-    (105, "Karan", 22, "CS"),
-    (106, "Ananya", 20, "ECE"),
-    (107, "Vikram", 23, "AIML"),
-    (108, "Diya", 25, "CS")
+    ("Laptop", 2, 50000),
+    ("Mobile", 3, 20000),
+    ("Laptop", 1, 50000),
+    ("Tablet", 4, 15000)
 ]
 
-columns = ["Roll_No", "Name", "Age", "Dept"]
-df = sql.createDataFrame(data, columns)
+df = spark.createDataFrame(data, ["Product", "Quantity", "Price"])
+df = df.withColumn("Sales", df.Quantity * df.Price)
 
 df.show()
 
-df.rdd.saveAsTextFile("file:///home/cloudera/output_students")
+df.groupBy("Product").agg(
+    sum("Quantity").alias("TotalQuantity"),
+    sum("Sales").alias("TotalSales"),
+    avg("Sales").alias("AverageSales")
+).show()
 
-sc.stop()
-EOF
+spark.stop()
+"""
 
+# =========================
+# Q8: PIG PRODUCT ANALYSIS
+# =========================
+files["products.txt"] = """Laptop,50000
+Mobile,20000
+Tablet,15000
+Laptop,45000
+Mobile,25000
+"""
 
-# ==========================================
-# RUN1 : WORD COUNT
-# ==========================================
+files["lab8.pig"] = """data = LOAD 'products.txt' USING PigStorage(',') AS (product:chararray, price:int);
+grouped = GROUP data BY product;
+result = FOREACH grouped GENERATE group, COUNT(data), AVG(data.price);
+filtered = FILTER result BY COUNT(data) >= 1;
+DUMP filtered;
+"""
 
-cat > run1.sh <<'EOF'
-#!/bin/bash
-cd ~
+# =========================
+# Q9: STUDENT DATAFRAME
+# =========================
+files["students.py"] = """from pyspark.sql import SparkSession
 
-echo "===== Q1 : WORD COUNT ====="
-echo "--- Mapper output ---"
-cat word.txt | python mapper.py
+spark = SparkSession.builder.appName("Students").master("local").getOrCreate()
 
-echo "--- Local MapReduce result ---"
+data = [
+    (1, "A", 80),
+    (2, "B", 75),
+    (3, "C", 90),
+    (4, "D", 85),
+    (5, "E", 70),
+    (6, "F", 88),
+    (7, "G", 95),
+    (8, "H", 78)
+]
+
+df = spark.createDataFrame(data, ["ID", "Name", "Marks"])
+df.show()
+
+output = "file:///home/cloudera/output_students"
+
+import os
+if os.path.exists("/home/cloudera/output_students"):
+    import shutil
+    shutil.rmtree("/home/cloudera/output_students")
+
+df.rdd.saveAsTextFile(output)
+
+print("Saved successfully")
+
+spark.stop()
+"""
+
+# =========================
+# RUN SCRIPTS Q1-Q5
+# =========================
+files["run1.sh"] = """#!/bin/bash
+set -e
+cd "$HOME"
 cat word.txt | python mapper.py | sort | python reducer.py
-EOF
+"""
 
-
-# ==========================================
-# RUN2 : TITANIC
-# ==========================================
-
-cat > run2.sh <<'EOF'
-#!/bin/bash
-cd ~
-
-echo "===== Q2 : TITANIC AVERAGE AGE ====="
-echo "--- Mapper output ---"
-cat titanic.txt | python mapper2.py
-
-echo "--- Local MapReduce result ---"
+files["run2.sh"] = """#!/bin/bash
+set -e
+cd "$HOME"
 cat titanic.txt | python mapper2.py | sort | python reducer2.py
-EOF
+"""
 
-
-# ==========================================
-# RUN3 : MATRIX MULTIPLICATION
-# ==========================================
-
-cat > run3.sh <<'EOF'
-#!/bin/bash
-cd ~
-
-echo "===== Q3 : MATRIX MULTIPLICATION ====="
-echo "--- Mapper output ---"
-cat input.txt | python mapper3.py
-
-echo "--- Local MapReduce result ---"
+files["run3.sh"] = """#!/bin/bash
+set -e
+cd "$HOME"
 cat input.txt | python mapper3.py | sort | python reducer3.py
-EOF
+"""
 
-
-# ==========================================
-# RUN4 : PIG
-# ==========================================
-
-cat > run4.sh <<'EOF'
-#!/bin/bash
-cd ~
-
-echo "===== Q4 : PIG MOST OCCURRING START LETTER ====="
+files["run4.sh"] = """#!/bin/bash
+set -e
+cd "$HOME"
 pig -x local lab4.pig
-EOF
+"""
 
+files["run5.sh"] = """#!/bin/bash
+set -e
+cd "$HOME"
+spark-submit --master local rdd.py
+"""
 
-# ==========================================
-# RUN5 : SPARK RDD
-# ==========================================
+# =========================
+# RUN Q7-Q9
+# =========================
+files["run7.sh"] = """#!/bin/bash
+set -e
+cd "$HOME"
+spark-submit --master local retail.py
+"""
 
-cat > run5.sh <<'EOF'
-#!/bin/bash
-cd ~
-
-echo "===== Q5 : SPARK RDD TO DATAFRAME ====="
-spark-submit --master local --conf spark.eventLog.enabled=false rdd.py
-EOF
-
-
-# ==========================================
-# RUN6 : LOCAL FILE MANAGEMENT
-# ==========================================
-
-cat > run6.sh <<'EOF'
-#!/bin/bash
-cd ~
-
-echo "===== Q6 : LOCAL FILE MANAGEMENT ====="
-
-rm -rf ~/lab4
-
-echo "--- 1. Create directory ---"
-mkdir ~/lab4
-
-echo "--- 2. List directory ---"
-ls -l ~/lab4
-
-echo "--- 3. Add file ---"
-cp ~/titanic.txt ~/lab4/
-
-ls -l ~/lab4
-
-echo "--- 4. View file contents ---"
-cat ~/lab4/titanic.txt
-
-echo "--- 5. Retrieve file ---"
-rm -f ~/titanic_copy.txt
-cp ~/lab4/titanic.txt ~/titanic_copy.txt
-
-ls -l ~/titanic_copy.txt
-
-echo "--- 6. Delete directory ---"
-rm -rf ~/lab4
-
-ls -l ~
-EOF
-
-
-# ==========================================
-# RUN7 : RETAIL SPARK
-# ==========================================
-
-cat > run7.sh <<'EOF'
-#!/bin/bash
-cd ~
-
-echo "===== Q7 : PYSPARK RETAIL SALES ANALYSIS ====="
-spark-submit --master local --conf spark.eventLog.enabled=false retail.py
-EOF
-
-
-# ==========================================
-# RUN8 : PIG PRODUCTS
-# ==========================================
-
-cat > run8.sh <<'EOF'
-#!/bin/bash
-cd ~
-
-echo "===== Q8 : PIG PRODUCT ANALYSIS ====="
+files["run8.sh"] = """#!/bin/bash
+set -e
+cd "$HOME"
 pig -x local lab8.pig
-EOF
+"""
 
+files["run9.sh"] = """#!/bin/bash
+set -e
+cd "$HOME"
+spark-submit --master local students.py
+"""
 
-# ==========================================
-# RUN9 : STUDENTS LOCAL OUTPUT
-# ==========================================
+# =========================
+# RUN ALL
+# =========================
+files["runall.sh"] = """#!/bin/bash
 
-cat > run9.sh <<'EOF'
-#!/bin/bash
-cd ~
-
-echo "===== Q9 : STUDENT DATAFRAME SAVED LOCALLY ====="
-
-rm -rf /home/cloudera/output_students
-
-spark-submit --master local --conf spark.eventLog.enabled=false students.py
-
-echo "--- Local output directory ---"
-ls -l /home/cloudera/output_students
-
-echo "--- Saved student data ---"
-cat /home/cloudera/output_students/part-*
-EOF
-
-
-# ==========================================
-# MASTER SCRIPT
-# ==========================================
-
-cat > runall.sh <<'EOF'
-#!/bin/bash
-cd ~
+cd "$HOME"
 
 failed=0
 
-run_question() {
-    qname="$1"
-    script="$2"
-
+for n in 1 2 3 4 5 6 7 8 9; do
     echo
-    echo "=================================="
-    echo "RUNNING $qname"
-    echo "=================================="
+    echo "=============================="
+    echo "RUNNING QUESTION $n"
+    echo "=============================="
 
-    if bash "$script"; then
-        echo "$qname : SUCCESS"
+    if bash "run$n.sh"; then
+        echo "Q$n SUCCESS"
     else
-        echo "$qname : FAILED"
+        echo "Q$n FAILED"
         failed=$((failed+1))
     fi
-}
-
-run_question "Q1" run1.sh
-run_question "Q2" run2.sh
-run_question "Q3" run3.sh
-run_question "Q4" run4.sh
-run_question "Q5" run5.sh
-run_question "Q6" run6.sh
-run_question "Q7" run7.sh
-run_question "Q8" run8.sh
-run_question "Q9" run9.sh
+done
 
 echo
-echo "=================================="
+echo "=============================="
+echo "FAILED QUESTIONS: $failed"
+echo "=============================="
 
 if [ "$failed" -eq 0 ]; then
-    echo "ALL QUESTIONS COMPLETED SUCCESSFULLY"
+    echo "ALL QUESTIONS COMPLETED"
 else
-    echo "$failed QUESTION(S) FAILED"
+    echo "CHECK FAILED QUESTIONS"
 fi
 
-echo "=================================="
-
 exit "$failed"
-EOF
+"""
 
+# Create files
+for name, content in files.items():
+    Path(name).write_text(content)
 
-# ==========================================
-# PERMISSIONS
-# ==========================================
+# Set executable permissions
+for name in files:
+    if name.endswith(".sh") or name.endswith(".py"):
+        Path(name).chmod(0o755)
 
-chmod 777 *.py *.sh
+# Validation
+print("\\nCHECKING PYTHON FILES")
 
+for name in files:
+    if name.endswith(".py"):
+        import py_compile
+        try:
+            py_compile.compile(name, doraise=True)
+            print("OK:", name)
+        except Exception as e:
+            print("ERROR:", name, e)
 
-# ==========================================
-# PYTHON SYNTAX CHECK
-# ==========================================
+print("\\nCHECKING SHELL FILES")
 
-echo "===== PYTHON CHECK ====="
+import subprocess
 
-for f in mapper.py reducer.py mapper2.py reducer2.py mapper3.py reducer3.py rdd.py retail.py students.py; do
-    python -m py_compile "$f" || echo "PYTHON ERROR: $f"
-done
+for name in files:
+    if name.endswith(".sh"):
+        result = subprocess.run(
+            ["bash", "-n", name],
+            capture_output=True,
+            text=True
+        )
+        if result.returncode == 0:
+            print("OK:", name)
+        else:
+            print("ERROR:", name, result.stderr)
 
+print("\\n======================================")
+print("ALL FILES CREATED AND CHECKED")
+print("NO HDFS OR YARN STARTUP REQUIRED")
+print("======================================")
+PYSETUP
 
-# ==========================================
-# SHELL SYNTAX CHECK
-# ==========================================
-
-echo "===== SHELL CHECK ====="
-
-for f in run1.sh run2.sh run3.sh run4.sh run5.sh run6.sh run7.sh run8.sh run9.sh runall.sh; do
-    bash -n "$f" || echo "SHELL ERROR: $f"
-done
-
-
-# ==========================================
-# FINAL MESSAGE
-# ==========================================
+python setup.py
 
 echo
 echo "=================================="
-echo "ALL FILES CREATED"
-echo "NO HDFS COMMANDS USED"
+echo "SETUP FINISHED"
 echo "=================================="
-echo
-echo "To run all questions:"
-echo "bash runall.sh"
