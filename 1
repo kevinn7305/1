@@ -1,6 +1,10 @@
 set +H
 cd ~
 
+# ==============================
+# Q1 : WORD COUNT
+# ==============================
+
 cat > word.txt <<'EOF'
 Hello world
 Hello Hadoop
@@ -10,8 +14,7 @@ cat > mapper.py <<'EOF'
 #!/usr/bin/env python
 import sys
 for line in sys.stdin:
-    words = line.strip().split()
-    for word in words:
+    for word in line.strip().split():
         print("%s\t%s" % (word, 1))
 EOF
 
@@ -25,6 +28,11 @@ for line in sys.stdin:
 for word, count in counts.items():
     print("%s\t%s" % (word, count))
 EOF
+
+
+# ==============================
+# Q2 : TITANIC AVERAGE AGE
+# ==============================
 
 cat > titanic.txt <<'EOF'
 Owen,male,22
@@ -63,6 +71,11 @@ for gender, values in data.items():
     average = values[0] / values[1]
     print("%s = %s" % (gender, average))
 EOF
+
+
+# ==============================
+# Q3 : MATRIX MULTIPLICATION
+# ==============================
 
 cat > input.txt <<'EOF'
 a,0,0,1
@@ -105,11 +118,10 @@ for i in range(2):
         print("(%d,%d)\t%d" % (i, j, s))
 EOF
 
-chmod 777 *.py
-echo BLOCK 1 DONE
 
-
-cd ~
+# ==============================
+# Q4 : PIG LETTER COUNT
+# ==============================
 
 cat > word1.txt <<'EOF'
 1,pooja,R,20
@@ -128,26 +140,49 @@ F = LIMIT E 1;
 DUMP F;
 EOF
 
+
+# ==============================
+# Q5 : SPARK RDD TO DATAFRAME
+# ==============================
+
 cat > rdd.py <<'EOF'
 from pyspark import SparkContext
 from pyspark.sql import SQLContext
+
 sc = SparkContext()
 sql = SQLContext(sc)
+
 rdd = sc.parallelize([
     (1, "AIML", 69),
     (2, "CS", 72),
     (3, "ECE", 99)
 ])
+
 df = sql.createDataFrame(rdd, ["No", "Dept", "No_of_students"])
 df.show()
+
 sc.stop()
 EOF
+
+
+# ==============================
+# Q6 : LOCAL FILE MANAGEMENT
+# ==============================
+
+# This question is executed through run6.sh
+
+
+# ==============================
+# Q7 : RETAIL ANALYSIS
+# ==============================
 
 cat > retail.py <<'EOF'
 from pyspark import SparkContext
 from pyspark.sql import SQLContext
+
 sc = SparkContext()
 sql = SQLContext(sc)
+
 data = [
     ("Laptop", "Electronics", 50000),
     ("Phone", "Electronics", 30000),
@@ -156,20 +191,32 @@ data = [
     ("Chair", "Furniture", 4000),
     ("Table", "Furniture", 8000)
 ]
+
 columns = ["Product", "Category", "Sales"]
 df = sql.createDataFrame(data, columns)
+
 print("1. All Products:")
 df.show()
+
 print("2. Products with sales above 5000:")
 df.filter(df.Sales > 5000).show()
+
 print("3. Total Sales by Category:")
 df.groupBy("Category").sum("Sales").show()
+
 print("4. Highest-Selling Product:")
 df.orderBy(df.Sales.desc()).limit(1).show()
+
 print("5. Products sorted by Sales, highest to lowest:")
 df.orderBy(df.Sales.desc()).show()
+
 sc.stop()
 EOF
+
+
+# ==============================
+# Q8 : PIG PRODUCT ANALYSIS
+# ==============================
 
 cat > products.txt <<'EOF'
 Laptop,Electronics,50000
@@ -191,11 +238,18 @@ electronics = FILTER products BY category == 'Electronics';
 DUMP electronics;
 EOF
 
+
+# ==============================
+# Q9 : STUDENT DATAFRAME
+# ==============================
+
 cat > students.py <<'EOF'
 from pyspark import SparkContext
 from pyspark.sql import SQLContext
+
 sc = SparkContext()
 sql = SQLContext(sc)
+
 data = [
     (101, "Aarav", 20, "AIML"),
     (102, "Priya", 19, "CS"),
@@ -206,153 +260,240 @@ data = [
     (107, "Vikram", 23, "AIML"),
     (108, "Diya", 25, "CS")
 ]
+
 columns = ["Roll_No", "Name", "Age", "Dept"]
 df = sql.createDataFrame(data, columns)
+
 df.show()
-df.rdd.saveAsTextFile("/user/cloudera/output_students")
+
+df.rdd.saveAsTextFile("/home/cloudera/output_students")
+
 sc.stop()
 EOF
 
-chmod 777 *.py
-echo BLOCK 2 DONE
 
-
-cd ~
+# ==============================
+# RUN1 : WORD COUNT
+# ==============================
 
 cat > run1.sh <<'EOF'
 cd ~
+
 echo ===== Q1 : WORD COUNT =====
 echo --- Mapper output ---
 cat word.txt | python mapper.py
+
 echo --- Local MapReduce result ---
 cat word.txt | python mapper.py | sort | python reducer.py
-hdfs dfs -mkdir -p prg1
-hdfs dfs -put -f /home/cloudera/word.txt /user/cloudera/prg1
-hdfs dfs -ls /user/cloudera/prg1
-hdfs dfs -rm -r -f /user/cloudera/prg1/output
-chmod 777 mapper.py reducer.py
-hadoop jar /usr/lib/hadoop-mapreduce/hadoop-streaming.jar \
--input /user/cloudera/prg1/word.txt \
--output /user/cloudera/prg1/output \
--mapper /home/cloudera/mapper.py \
--reducer /home/cloudera/reducer.py
-echo ===== HADOOP OUTPUT =====
-hdfs dfs -cat /user/cloudera/prg1/output/part-00000
 EOF
+
+
+# ==============================
+# RUN2 : TITANIC
+# ==============================
 
 cat > run2.sh <<'EOF'
 cd ~
+
 echo ===== Q2 : TITANIC AVERAGE AGE =====
 echo --- Mapper output ---
 cat titanic.txt | python mapper2.py
+
 echo --- Local MapReduce result ---
 cat titanic.txt | python mapper2.py | sort | python reducer2.py
-hdfs dfs -mkdir -p prg2
-hdfs dfs -put -f /home/cloudera/titanic.txt /user/cloudera/prg2
-hdfs dfs -ls /user/cloudera/prg2
-hdfs dfs -rm -r -f /user/cloudera/prg2/output
-chmod 777 mapper2.py reducer2.py
-hadoop jar /usr/lib/hadoop-mapreduce/hadoop-streaming.jar \
--input /user/cloudera/prg2/titanic.txt \
--output /user/cloudera/prg2/output \
--mapper /home/cloudera/mapper2.py \
--reducer /home/cloudera/reducer2.py
-echo ===== HADOOP OUTPUT =====
-hdfs dfs -cat /user/cloudera/prg2/output/part-00000
 EOF
+
+
+# ==============================
+# RUN3 : MATRIX MULTIPLICATION
+# ==============================
 
 cat > run3.sh <<'EOF'
 cd ~
+
 echo ===== Q3 : MATRIX MULTIPLICATION =====
 echo --- Mapper output ---
 cat input.txt | python mapper3.py
+
 echo --- Local MapReduce result ---
 cat input.txt | python mapper3.py | sort | python reducer3.py
-hdfs dfs -mkdir -p prg3
-hdfs dfs -put -f /home/cloudera/input.txt /user/cloudera/prg3
-hdfs dfs -ls /user/cloudera/prg3
-hdfs dfs -rm -r -f /user/cloudera/prg3/output
-chmod 777 mapper3.py reducer3.py
-hadoop jar /usr/lib/hadoop-mapreduce/hadoop-streaming.jar \
--input /user/cloudera/prg3/input.txt \
--output /user/cloudera/prg3/output \
--mapper /home/cloudera/mapper3.py \
--reducer /home/cloudera/reducer3.py
-echo ===== HADOOP OUTPUT =====
-hdfs dfs -cat /user/cloudera/prg3/output/part-00000
 EOF
 
-chmod 777 run*.sh
-echo BLOCK 3 DONE
 
-
-cd ~
+# ==============================
+# RUN4 : PIG
+# ==============================
 
 cat > run4.sh <<'EOF'
 cd ~
+
 echo ===== Q4 : PIG MOST OCCURRING START LETTER =====
 cat lab4.pig
 pig -x local lab4.pig
 EOF
 
+
+# ==============================
+# RUN5 : SPARK RDD
+# ==============================
+
 cat > run5.sh <<'EOF'
 cd ~
+
 echo ===== Q5 : SPARK RDD TO DATAFRAME =====
-spark-submit --master local \
---conf spark.eventLog.enabled=false rdd.py
+spark-submit --master local --conf spark.eventLog.enabled=false rdd.py
 EOF
+
+
+# ==============================
+# RUN6 : LOCAL FILE MANAGEMENT
+# ==============================
 
 cat > run6.sh <<'EOF'
 cd ~
-echo ===== Q6 : HDFS FILE MANAGEMENT =====
-hdfs dfs -rm -r -f /user/cloudera/lab4
+
+echo ===== Q6 : LOCAL FILE MANAGEMENT =====
+
+rm -rf ~/lab4
+
 echo --- 1. Create directory ---
-hdfs dfs -mkdir lab4
+mkdir ~/lab4
+
 echo --- 2. List directory ---
-hdfs dfs -ls /user/cloudera/lab4
-echo --- 3. Add file from local to HDFS ---
-hdfs dfs -put /home/cloudera/titanic.txt /user/cloudera/lab4
-hdfs dfs -ls /user/cloudera/lab4
-echo --- 4. Retrieve file : view contents ---
-hdfs dfs -cat /user/cloudera/lab4/titanic.txt
-echo --- 5. Retrieve file : copy back to local ---
-rm -f /home/cloudera/titanic_copy.txt
-hdfs dfs -get /user/cloudera/lab4/titanic.txt \
-/home/cloudera/titanic_copy.txt
-ls -l /home/cloudera/titanic_copy.txt
+ls -l ~/lab4
+
+echo --- 3. Add file from local to directory ---
+cp ~/titanic.txt ~/lab4/
+
+ls -l ~/lab4
+
+echo --- 4. View file contents ---
+cat ~/lab4/titanic.txt
+
+echo --- 5. Retrieve file : copy back to home ---
+rm -f ~/titanic_copy.txt
+cp ~/lab4/titanic.txt ~/titanic_copy.txt
+
+ls -l ~/titanic_copy.txt
+
 echo --- 6. Delete directory ---
-hdfs dfs -rm -r /user/cloudera/lab4
-hdfs dfs -ls
+rm -rf ~/lab4
+
+ls -l ~
 EOF
+
+
+# ==============================
+# RUN7 : RETAIL SPARK
+# ==============================
 
 cat > run7.sh <<'EOF'
 cd ~
+
 echo ===== Q7 : PYSPARK RETAIL SALES ANALYSIS =====
-spark-submit --master local \
---conf spark.eventLog.enabled=false retail.py
+spark-submit --master local --conf spark.eventLog.enabled=false retail.py
 EOF
+
+
+# ==============================
+# RUN8 : PIG PRODUCTS
+# ==============================
 
 cat > run8.sh <<'EOF'
 cd ~
+
 echo ===== Q8 : PIG PRODUCT ANALYSIS =====
 echo Order : all records, grouped, count, Electronics only
 cat lab8.pig
 pig -x local lab8.pig
 EOF
 
+
+# ==============================
+# RUN9 : STUDENTS LOCAL OUTPUT
+# ==============================
+
 cat > run9.sh <<'EOF'
 cd ~
-echo ===== Q9 : STUDENT DATAFRAME SAVED IN HDFS =====
-hdfs dfs -rm -r -f /user/cloudera/output_students
-spark-submit --master local \
---conf spark.eventLog.enabled=false students.py
-echo --- hdfs dfs -ls output_students ---
-hdfs dfs -ls /user/cloudera/output_students
-echo --- hdfs dfs -cat output_students ---
-hdfs dfs -cat /user/cloudera/output_students/part-*
+
+echo ===== Q9 : STUDENT DATAFRAME SAVED LOCALLY =====
+
+rm -rf /home/cloudera/output_students
+
+spark-submit --master local --conf spark.eventLog.enabled=false students.py
+
+echo --- Local output directory ---
+ls -l /home/cloudera/output_students
+
+echo --- Saved student data ---
+cat /home/cloudera/output_students/part-*
 EOF
 
+
+# ==============================
+# MASTER SCRIPT
+# ==============================
+
+cat > runall.sh <<'EOF'
+#!/bin/bash
+cd ~
+
+echo "=================================="
+echo " RUNNING ALL 9 LAB QUESTIONS"
+echo "=================================="
+
+bash run1.sh
+echo
+
+bash run2.sh
+echo
+
+bash run3.sh
+echo
+
+bash run4.sh
+echo
+
+bash run5.sh
+echo
+
+bash run6.sh
+echo
+
+bash run7.sh
+echo
+
+bash run8.sh
+echo
+
+bash run9.sh
+echo
+
+echo "=================================="
+echo " ALL QUESTIONS COMPLETED"
+echo "=================================="
+EOF
+
+
+# ==============================
+# PERMISSIONS
+# ==============================
+
 chmod 777 *.py *.sh
-for f in *.py; do python -m py_compile $f || echo BROKEN $f; done
-for f in run*.sh; do bash -n $f || echo BROKEN $f; done
-echo ALL DONE - if no BROKEN lines above, run bash run1.sh to run9.sh
+
+# ==============================
+# SYNTAX CHECK
+# ==============================
+
+for f in *.py; do
+    python -m py_compile "$f" || echo BROKEN "$f"
+done
+
+for f in run*.sh; do
+    bash -n "$f" || echo BROKEN "$f"
+done
+
+echo "=================================="
+echo " ALL FILES CREATED SUCCESSFULLY"
+echo " NO HDFS COMMANDS IN RUN SCRIPTS"
+echo "=================================="
