@@ -6,6 +6,7 @@ Hello world
 Hello Hadoop
 EOF
 
+
 cat > mapper.py <<'EOF'
 #!/usr/bin/env python
 import sys
@@ -14,6 +15,7 @@ for line in sys.stdin:
     for word in words:
         print("%s\t%s" % (word, 1))
 EOF
+
 
 cat > reducer.py <<'EOF'
 #!/usr/bin/env python
@@ -25,6 +27,7 @@ for line in sys.stdin:
 for word, count in counts.items():
     print("%s\t%s" % (word, count))
 EOF
+
 
 cat > titanic.txt <<'EOF'
 Owen,male,22
@@ -39,6 +42,7 @@ Sophia,female,24
 William,male,30
 EOF
 
+
 cat > mapper2.py <<'EOF'
 #!/usr/bin/env python
 import sys
@@ -48,6 +52,7 @@ for line in reader:
     if len(line) > 2:
         print('%s,%s' % (line[1], line[2]))
 EOF
+
 
 cat > reducer2.py <<'EOF'
 #!/usr/bin/env python
@@ -64,6 +69,7 @@ for gender, values in data.items():
     print("%s = %s" % (gender, average))
 EOF
 
+
 cat > input.txt <<'EOF'
 a,0,0,1
 a,0,1,2
@@ -75,6 +81,7 @@ b,1,0,7
 b,1,1,8
 EOF
 
+
 cat > mapper3.py <<'EOF'
 #!/usr/bin/env python
 import sys
@@ -83,6 +90,7 @@ for line in sys.stdin:
     if len(p) == 4:
         print("%s\t%s" % (p[0].lower(), ','.join(p)))
 EOF
+
 
 cat > reducer3.py <<'EOF'
 #!/usr/bin/env python
@@ -105,12 +113,20 @@ for i in range(2):
         print("(%d,%d)\t%d" % (i, j, s))
 EOF
 
+
+chmod 777 *.py
+echo "BLOCK 1 DONE"
+
+
+cd ~
+
 cat > word1.txt <<'EOF'
 1,pooja,R,20
 2,sam,Thomas,25
 3,priya,S,20
 4,pavan,Rao,20
 EOF
+
 
 cat > lab4.pig <<'EOF'
 A = LOAD 'word1.txt' USING PigStorage(',') AS (id:int, first_name:chararray, last_name:chararray, age:int);
@@ -121,6 +137,7 @@ E = ORDER D BY count DESC;
 F = LIMIT E 1;
 DUMP F;
 EOF
+
 
 cat > rdd.py <<'EOF'
 from pyspark import SparkContext
@@ -136,6 +153,7 @@ df = sql.createDataFrame(rdd, ["No", "Dept", "No_of_students"])
 df.show()
 sc.stop()
 EOF
+
 
 cat > retail.py <<'EOF'
 from pyspark import SparkContext
@@ -165,6 +183,7 @@ df.orderBy(df.Sales.desc()).show()
 sc.stop()
 EOF
 
+
 cat > products.txt <<'EOF'
 Laptop,Electronics,50000
 Phone,Electronics,30000
@@ -173,6 +192,7 @@ Oil,Grocery,2000
 Chair,Furniture,4000
 Table,Furniture,8000
 EOF
+
 
 cat > lab8.pig <<'EOF'
 products = LOAD 'products.txt' USING PigStorage(',') AS (product:chararray, category:chararray, sales:int);
@@ -185,27 +205,12 @@ electronics = FILTER products BY category == 'Electronics';
 DUMP electronics;
 EOF
 
-cat > students.py <<'EOF'
-from pyspark import SparkContext
-from pyspark.sql import SQLContext
-sc = SparkContext()
-sql = SQLContext(sc)
-data = [
-    (101, "Aarav", 20, "AIML"),
-    (102, "Priya", 19, "CS"),
-    (103, "Rahul", 21, "ECE"),
-    (104, "Sneha", 18, "AIML"),
-    (105, "Karan", 22, "CS"),
-    (106, "Ananya", 20, "ECE"),
-    (107, "Vikram", 23, "AIML"),
-    (108, "Diya", 25, "CS")
-]
-columns = ["Roll_No", "Name", "Age", "Dept"]
-df = sql.createDataFrame(data, columns)
-df.show()
-df.rdd.saveAsTextFile("/user/cloudera/output_students")
-sc.stop()
-EOF
+
+chmod 777 *.py
+echo "BLOCK 2 DONE"
+
+
+cd ~
 
 cat > run1.sh <<'EOF'
 cd ~
@@ -224,6 +229,7 @@ echo "===== HADOOP OUTPUT ====="
 hdfs dfs -cat /user/cloudera/prg1/output/part-00000
 EOF
 
+
 cat > run2.sh <<'EOF'
 cd ~
 echo "===== Q2 : TITANIC AVERAGE AGE ====="
@@ -240,6 +246,7 @@ hadoop jar /usr/lib/hadoop-mapreduce/hadoop-streaming.jar -input /user/cloudera/
 echo "===== HADOOP OUTPUT ====="
 hdfs dfs -cat /user/cloudera/prg2/output/part-00000
 EOF
+
 
 cat > run3.sh <<'EOF'
 cd ~
@@ -258,6 +265,13 @@ echo "===== HADOOP OUTPUT ====="
 hdfs dfs -cat /user/cloudera/prg3/output/part-00000
 EOF
 
+
+chmod 777 run*.sh
+echo "BLOCK 3 DONE"
+
+
+cd ~
+
 cat > run4.sh <<'EOF'
 cd ~
 echo "===== Q4 : PIG MOST OCCURRING START LETTER ====="
@@ -265,11 +279,13 @@ cat lab4.pig
 pig -x local lab4.pig
 EOF
 
+
 cat > run5.sh <<'EOF'
 cd ~
 echo "===== Q5 : SPARK RDD TO DATAFRAME ====="
 spark-submit --master local --conf spark.eventLog.enabled=false rdd.py
 EOF
+
 
 cat > run6.sh <<'EOF'
 cd ~
@@ -293,11 +309,13 @@ hdfs dfs -rm -r /user/cloudera/lab4
 hdfs dfs -ls
 EOF
 
+
 cat > run7.sh <<'EOF'
 cd ~
 echo "===== Q7 : PYSPARK RETAIL SALES ANALYSIS ====="
 spark-submit --master local --conf spark.eventLog.enabled=false retail.py
 EOF
+
 
 cat > run8.sh <<'EOF'
 cd ~
@@ -306,6 +324,36 @@ echo "Output order: 1 all records, 2 grouped by category, 3 count per category, 
 cat lab8.pig
 pig -x local lab8.pig
 EOF
+
+
+chmod 777 run*.sh
+echo "BLOCK 4 DONE"
+
+
+cd ~
+
+cat > students.py <<'EOF'
+from pyspark import SparkContext
+from pyspark.sql import SQLContext
+sc = SparkContext()
+sql = SQLContext(sc)
+data = [
+    (101, "Aarav", 20, "AIML"),
+    (102, "Priya", 19, "CS"),
+    (103, "Rahul", 21, "ECE"),
+    (104, "Sneha", 18, "AIML"),
+    (105, "Karan", 22, "CS"),
+    (106, "Ananya", 20, "ECE"),
+    (107, "Vikram", 23, "AIML"),
+    (108, "Diya", 25, "CS")
+]
+columns = ["Roll_No", "Name", "Age", "Dept"]
+df = sql.createDataFrame(data, columns)
+df.show()
+df.rdd.saveAsTextFile("/user/cloudera/output_students")
+sc.stop()
+EOF
+
 
 cat > run9.sh <<'EOF'
 cd ~
@@ -317,6 +365,7 @@ hdfs dfs -ls /user/cloudera/output_students
 echo "--- hdfs dfs -cat /user/cloudera/output_students ---"
 hdfs dfs -cat '/user/cloudera/output_students/part-*'
 EOF
+
 
 chmod 777 *.py *.sh
 for f in *.py; do python -m py_compile $f || echo "BROKEN: $f"; done
