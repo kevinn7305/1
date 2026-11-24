@@ -4,72 +4,63 @@ set +H
 cat > setup.py <<'PYSETUP'
 from pathlib import Path
 
-files = {}
+F = {}
 
 # =========================
 # Q1: WORD COUNT
 # =========================
-files["word.txt"] = """Hello world
-Hello Hadoop
-"""
+F["word.txt"] = "Hello world\nHello Hadoop\n"
 
-files["mapper.py"] = """#!/usr/bin/env python
+F["mapper.py"] = '''#!/usr/bin/env python
 import sys
-
 for line in sys.stdin:
     for word in line.strip().split():
         print(word + "\\t1")
-"""
+'''
 
-files["reducer.py"] = """#!/usr/bin/env python
+F["reducer.py"] = '''#!/usr/bin/env python
 import sys
-
 counts = {}
-
 for line in sys.stdin:
-    word, count = line.strip().split("\\t")
-    counts[word] = counts.get(word, 0) + int(count)
-
-for word, count in sorted(counts.items()):
-    print(word + "\\t" + str(count))
-"""
+    word, n = line.strip().split("\\t")
+    counts[word] = counts.get(word, 0) + int(n)
+for word in sorted(counts):
+    print(word + "\\t" + str(counts[word]))
+'''
 
 # =========================
-# Q2: TITANIC GENDER AVG AGE
+# Q2: TITANIC AVG AGE
 # =========================
-files["titanic.txt"] = """female,22
+F["titanic.txt"] = '''female,22
 female,30
 female,40
 male,25
 male,35
 male,34
-"""
+'''
 
-files["mapper2.py"] = """#!/usr/bin/env python
+F["mapper2.py"] = '''#!/usr/bin/env python
 import sys
-
 for line in sys.stdin:
     gender, age = line.strip().split(",")
     print(gender + "\\t" + age)
-"""
+'''
 
-files["reducer2.py"] = """#!/usr/bin/env python
+F["reducer2.py"] = '''#!/usr/bin/env python
 import sys
-
 data = {}
-
 for line in sys.stdin:
     gender, age = line.strip().split("\\t")
     data.setdefault(gender, []).append(float(age))
-
-for gender, ages in sorted(data.items()):
+for gender in sorted(data):
+    ages = data[gender]
     print(gender + "\\t" + str(round(sum(ages)/len(ages), 2)))
-"""
+'''
 
 # =========================
 # Q3: MATRIX MULTIPLICATION
 # =========================
-files["input.txt"] = """A,0,0,1
+F["input.txt"] = '''A,0,0,1
 A,0,1,2
 A,1,0,3
 A,1,1,4
@@ -77,239 +68,300 @@ B,0,0,5
 B,0,1,6
 B,1,0,7
 B,1,1,8
-"""
+'''
 
-files["mapper3.py"] = """#!/usr/bin/env python
+F["mapper3.py"] = '''#!/usr/bin/env python
 import sys
-
 for line in sys.stdin:
     matrix, row, col, value = line.strip().split(",")
     row, col, value = int(row), int(col), int(value)
-
     if matrix == "A":
         for j in range(2):
-            print(str(row) + "," + str(j) + "\\tA," + str(col) + "," + str(value))
+            print(str(row)+","+str(j)+"\\tA,"+str(col)+","+str(value))
     else:
         for i in range(2):
-            print(str(i) + "," + str(col) + "\\tB," + str(row) + "," + str(value))
-"""
+            print(str(i)+","+str(col)+"\\tB,"+str(row)+","+str(value))
+'''
 
-files["reducer3.py"] = """#!/usr/bin/env python
+F["reducer3.py"] = '''#!/usr/bin/env python
 import sys
-
 data = {}
-
 for line in sys.stdin:
     key, value = line.strip().split("\\t")
-    matrix, index, number = value.split(",")
-    data.setdefault(key, {}).setdefault(matrix, []).append((int(index), int(number)))
-
+    matrix, k, val = value.split(",")
+    data.setdefault(key, {}).setdefault(matrix, []).append((int(k), int(val)))
 for key in sorted(data):
     a = sorted(data[key].get("A", []))
     b = sorted(data[key].get("B", []))
-
-    result = sum(x[1] * y[1] for x, y in zip(a, b))
+    result = sum(x[1]*y[1] for x,y in zip(a,b))
     print(key + "\\t" + str(result))
-"""
+'''
 
 # =========================
 # Q4: PIG LETTER COUNT
 # =========================
-files["word1.txt"] = """pooja
-sam
-priya
-pavan
-"""
+F["word1.txt"] = "pooja\nsam\npriya\npavan\n"
 
-files["lab4.pig"] = """data = LOAD 'word1.txt' USING PigStorage() AS (word:chararray);
+F["lab4.pig"] = '''data = LOAD '/user/cloudera/q4/input/word1.txt' USING PigStorage() AS (word:chararray);
 letters = FOREACH data GENERATE UPPER(SUBSTRING(word,0,1)) AS letter;
 grouped = GROUP letters BY letter;
 result = FOREACH grouped GENERATE group, COUNT(letters);
 DUMP result;
-"""
+'''
 
 # =========================
-# Q5: PYSPARK RDD TO DF
+# Q5: RDD TO DATAFRAME
 # =========================
-files["rdd.py"] = """from pyspark.sql import SparkSession
+F["rdd.py"] = '''from pyspark.sql import SparkSession
 
-spark = SparkSession.builder.appName("RDDtoDF").master("local").getOrCreate()
+spark = SparkSession.builder.appName("RDDtoDF").getOrCreate()
 sc = spark.sparkContext
 
-data = [("A", 20), ("B", 25), ("C", 30)]
+data = [("A",20),("B",25),("C",30)]
 rdd = sc.parallelize(data)
-
-df = spark.createDataFrame(rdd, ["Name", "Age"])
+df = spark.createDataFrame(rdd, ["Name","Age"])
 df.show()
 
+df.write.mode("overwrite").csv("/user/cloudera/q5/output", header=True)
+
 spark.stop()
-"""
+'''
 
 # =========================
-# Q6: LOCAL FILE MANAGEMENT
+# Q6: HDFS FILE MANAGEMENT
 # =========================
-files["run6.sh"] = """#!/bin/bash
+F["q6.txt"] = "HDFS file management demonstration\\n"
+
+F["run6.sh"] = '''#!/bin/bash
 set -e
-cd "$HOME"
 
-mkdir -p localfiles
-cp word.txt localfiles/
+HDFS=/user/cloudera/q6
+
+hdfs dfs -rm -r -f "$HDFS"
+hdfs dfs -mkdir -p "$HDFS"
+hdfs dfs -put q6.txt "$HDFS/"
+
+echo "HDFS file:"
+hdfs dfs -cat "$HDFS/q6.txt"
+
+hdfs dfs -cp "$HDFS/q6.txt" "$HDFS/q6_copy.txt"
 echo "Copied file:"
-cat localfiles/word.txt
+hdfs dfs -cat "$HDFS/q6_copy.txt"
 
-rm -f localfiles/word.txt
-echo "File removed"
-"""
+hdfs dfs -rm "$HDFS/q6.txt"
+hdfs dfs -rm "$HDFS/q6_copy.txt"
+
+echo "Q6 completed"
+'''
 
 # =========================
 # Q7: RETAIL ANALYSIS
 # =========================
-files["retail.py"] = """from pyspark.sql import SparkSession
-from pyspark.sql.functions import sum, avg, count
+F["retail.txt"] = '''Laptop,2,50000
+Mobile,3,20000
+Laptop,1,50000
+Tablet,4,15000
+'''
 
-spark = SparkSession.builder.appName("Retail").master("local").getOrCreate()
+F["retail.py"] = '''from pyspark.sql import SparkSession
+from pyspark.sql.functions import sum, avg
 
-data = [
-    ("Laptop", 2, 50000),
-    ("Mobile", 3, 20000),
-    ("Laptop", 1, 50000),
-    ("Tablet", 4, 15000)
-]
+spark = SparkSession.builder.appName("RetailAnalysis").getOrCreate()
 
-df = spark.createDataFrame(data, ["Product", "Quantity", "Price"])
+df = spark.read.csv(
+    "/user/cloudera/q7/input/retail.txt",
+    header=False,
+    inferSchema=True
+)
+
+df = df.toDF("Product","Quantity","Price")
 df = df.withColumn("Sales", df.Quantity * df.Price)
 
 df.show()
 
-df.groupBy("Product").agg(
+result = df.groupBy("Product").agg(
     sum("Quantity").alias("TotalQuantity"),
     sum("Sales").alias("TotalSales"),
     avg("Sales").alias("AverageSales")
-).show()
+)
+
+result.show()
+result.write.mode("overwrite").csv("/user/cloudera/q7/output", header=True)
 
 spark.stop()
-"""
+'''
 
 # =========================
 # Q8: PIG PRODUCT ANALYSIS
 # =========================
-files["products.txt"] = """Laptop,50000
+F["products.txt"] = '''Laptop,50000
 Mobile,20000
 Tablet,15000
 Laptop,45000
 Mobile,25000
-"""
+'''
 
-files["lab8.pig"] = """data = LOAD 'products.txt' USING PigStorage(',') AS (product:chararray, price:int);
+F["lab8.pig"] = '''data = LOAD '/user/cloudera/q8/input/products.txt' USING PigStorage(',') AS (product:chararray, price:int);
 grouped = GROUP data BY product;
 result = FOREACH grouped GENERATE group, COUNT(data), AVG(data.price);
-filtered = FILTER result BY COUNT(data) >= 1;
-DUMP filtered;
-"""
+DUMP result;
+'''
 
 # =========================
 # Q9: STUDENT DATAFRAME
 # =========================
-files["students.py"] = """from pyspark.sql import SparkSession
+F["students.py"] = '''from pyspark.sql import SparkSession
 
-spark = SparkSession.builder.appName("Students").master("local").getOrCreate()
+spark = SparkSession.builder.appName("Students").getOrCreate()
 
 data = [
-    (1, "A", 80),
-    (2, "B", 75),
-    (3, "C", 90),
-    (4, "D", 85),
-    (5, "E", 70),
-    (6, "F", 88),
-    (7, "G", 95),
-    (8, "H", 78)
+    (1,"A",80),(2,"B",75),(3,"C",90),(4,"D",85),
+    (5,"E",70),(6,"F",88),(7,"G",95),(8,"H",78)
 ]
 
-df = spark.createDataFrame(data, ["ID", "Name", "Marks"])
+df = spark.createDataFrame(data, ["ID","Name","Marks"])
 df.show()
 
-output = "file:///home/cloudera/output_students"
-
-import os
-if os.path.exists("/home/cloudera/output_students"):
-    import shutil
-    shutil.rmtree("/home/cloudera/output_students")
-
-df.rdd.saveAsTextFile(output)
-
-print("Saved successfully")
+df.write.mode("overwrite").parquet("/user/cloudera/q9/students")
 
 spark.stop()
-"""
+'''
 
 # =========================
-# RUN SCRIPTS Q1-Q5
+# RUN Q1
 # =========================
-files["run1.sh"] = """#!/bin/bash
+F["run1.sh"] = '''#!/bin/bash
 set -e
-cd "$HOME"
-cat word.txt | python mapper.py | sort | python reducer.py
-"""
+HDFS=/user/cloudera/q1
+hdfs dfs -rm -r -f "$HDFS"
+hdfs dfs -mkdir -p "$HDFS/input"
+hdfs dfs -put word.txt "$HDFS/input/"
 
-files["run2.sh"] = """#!/bin/bash
-set -e
-cd "$HOME"
-cat titanic.txt | python mapper2.py | sort | python reducer2.py
-"""
+JAR=$(find /usr/lib /opt -name '*hadoop-streaming*.jar' -print -quit 2>/dev/null)
+if [ -z "$JAR" ]; then echo "Streaming JAR not found"; exit 1; fi
 
-files["run3.sh"] = """#!/bin/bash
-set -e
-cd "$HOME"
-cat input.txt | python mapper3.py | sort | python reducer3.py
-"""
+hadoop jar "$JAR" \
+-files mapper.py,reducer.py \
+-mapper "python mapper.py" \
+-reducer "python reducer.py" \
+-input "$HDFS/input" -output "$HDFS/output"
 
-files["run4.sh"] = """#!/bin/bash
-set -e
-cd "$HOME"
-pig -x local lab4.pig
-"""
-
-files["run5.sh"] = """#!/bin/bash
-set -e
-cd "$HOME"
-spark-submit --master local rdd.py
-"""
+hdfs dfs -cat "$HDFS/output/part-*"
+'''
 
 # =========================
-# RUN Q7-Q9
+# RUN Q2
 # =========================
-files["run7.sh"] = """#!/bin/bash
+F["run2.sh"] = '''#!/bin/bash
 set -e
-cd "$HOME"
-spark-submit --master local retail.py
-"""
+HDFS=/user/cloudera/q2
+hdfs dfs -rm -r -f "$HDFS"
+hdfs dfs -mkdir -p "$HDFS/input"
+hdfs dfs -put titanic.txt "$HDFS/input/"
 
-files["run8.sh"] = """#!/bin/bash
-set -e
-cd "$HOME"
-pig -x local lab8.pig
-"""
+JAR=$(find /usr/lib /opt -name '*hadoop-streaming*.jar' -print -quit 2>/dev/null)
+if [ -z "$JAR" ]; then echo "Streaming JAR not found"; exit 1; fi
 
-files["run9.sh"] = """#!/bin/bash
+hadoop jar "$JAR" \
+-files mapper2.py,reducer2.py \
+-mapper "python mapper2.py" \
+-reducer "python reducer2.py" \
+-input "$HDFS/input" -output "$HDFS/output"
+
+hdfs dfs -cat "$HDFS/output/part-*"
+'''
+
+# =========================
+# RUN Q3
+# =========================
+F["run3.sh"] = '''#!/bin/bash
 set -e
-cd "$HOME"
-spark-submit --master local students.py
-"""
+HDFS=/user/cloudera/q3
+hdfs dfs -rm -r -f "$HDFS"
+hdfs dfs -mkdir -p "$HDFS/input"
+hdfs dfs -put input.txt "$HDFS/input/"
+
+JAR=$(find /usr/lib /opt -name '*hadoop-streaming*.jar' -print -quit 2>/dev/null)
+if [ -z "$JAR" ]; then echo "Streaming JAR not found"; exit 1; fi
+
+hadoop jar "$JAR" \
+-files mapper3.py,reducer3.py \
+-mapper "python mapper3.py" \
+-reducer "python reducer3.py" \
+-input "$HDFS/input" -output "$HDFS/output"
+
+hdfs dfs -cat "$HDFS/output/part-*"
+'''
+
+# =========================
+# RUN Q4
+# =========================
+F["run4.sh"] = '''#!/bin/bash
+set -e
+HDFS=/user/cloudera/q4
+hdfs dfs -rm -r -f "$HDFS"
+hdfs dfs -mkdir -p "$HDFS/input"
+hdfs dfs -put word1.txt "$HDFS/input/"
+pig lab4.pig
+'''
+
+# =========================
+# RUN Q5
+# =========================
+F["run5.sh"] = '''#!/bin/bash
+set -e
+hdfs dfs -rm -r -f /user/cloudera/q5
+spark-submit --master yarn --deploy-mode client rdd.py
+hdfs dfs -ls /user/cloudera/q5/output
+'''
+
+# =========================
+# RUN Q7
+# =========================
+F["run7.sh"] = '''#!/bin/bash
+set -e
+HDFS=/user/cloudera/q7
+hdfs dfs -rm -r -f "$HDFS"
+hdfs dfs -mkdir -p "$HDFS/input"
+hdfs dfs -put retail.txt "$HDFS/input/"
+spark-submit --master yarn --deploy-mode client retail.py
+hdfs dfs -ls "$HDFS/output"
+'''
+
+# =========================
+# RUN Q8
+# =========================
+F["run8.sh"] = '''#!/bin/bash
+set -e
+HDFS=/user/cloudera/q8
+hdfs dfs -rm -r -f "$HDFS"
+hdfs dfs -mkdir -p "$HDFS/input"
+hdfs dfs -put products.txt "$HDFS/input/"
+pig lab8.pig
+'''
+
+# =========================
+# RUN Q9
+# =========================
+F["run9.sh"] = '''#!/bin/bash
+set -e
+hdfs dfs -rm -r -f /user/cloudera/q9
+spark-submit --master yarn --deploy-mode client students.py
+hdfs dfs -ls /user/cloudera/q9/students
+'''
 
 # =========================
 # RUN ALL
 # =========================
-files["runall.sh"] = """#!/bin/bash
-
+F["runall.sh"] = '''#!/bin/bash
 cd "$HOME"
-
 failed=0
 
 for n in 1 2 3 4 5 6 7 8 9; do
     echo
-    echo "=============================="
+    echo "=========================="
     echo "RUNNING QUESTION $n"
-    echo "=============================="
+    echo "=========================="
 
     if bash "run$n.sh"; then
         echo "Q$n SUCCESS"
@@ -320,65 +372,41 @@ for n in 1 2 3 4 5 6 7 8 9; do
 done
 
 echo
-echo "=============================="
+echo "=========================="
 echo "FAILED QUESTIONS: $failed"
-echo "=============================="
-
-if [ "$failed" -eq 0 ]; then
-    echo "ALL QUESTIONS COMPLETED"
-else
-    echo "CHECK FAILED QUESTIONS"
-fi
-
+echo "=========================="
 exit "$failed"
-"""
+'''
 
 # Create files
-for name, content in files.items():
+for name, content in F.items():
     Path(name).write_text(content)
 
-# Set executable permissions
-for name in files:
-    if name.endswith(".sh") or name.endswith(".py"):
+# Permissions
+for name in F:
+    if name.endswith(".py") or name.endswith(".sh"):
         Path(name).chmod(0o755)
 
-# Validation
-print("\\nCHECKING PYTHON FILES")
-
-for name in files:
-    if name.endswith(".py"):
-        import py_compile
-        try:
-            py_compile.compile(name, doraise=True)
-            print("OK:", name)
-        except Exception as e:
-            print("ERROR:", name, e)
-
-print("\\nCHECKING SHELL FILES")
-
-import subprocess
-
-for name in files:
-    if name.endswith(".sh"):
-        result = subprocess.run(
-            ["bash", "-n", name],
-            capture_output=True,
-            text=True
-        )
-        if result.returncode == 0:
-            print("OK:", name)
-        else:
-            print("ERROR:", name, result.stderr)
-
-print("\\n======================================")
-print("ALL FILES CREATED AND CHECKED")
-print("NO HDFS OR YARN STARTUP REQUIRED")
-print("======================================")
+print("CREATED", len(F), "FILES")
 PYSETUP
 
 python setup.py
 
 echo
-echo "=================================="
-echo "SETUP FINISHED"
-echo "=================================="
+echo "Checking Python syntax..."
+
+for f in *.py; do
+    python -m py_compile "$f" || echo "BROKEN PYTHON: $f"
+done
+
+echo
+echo "Checking Shell syntax..."
+
+for f in run*.sh; do
+    bash -n "$f" || echo "BROKEN SHELL: $f"
+done
+
+echo
+echo "======================================"
+echo "ALL Q1-Q9 FILES CREATED"
+echo "======================================"
